@@ -1,0 +1,71 @@
+begin(ticketID, url, resp ,status, err)
+    try
+    begin()
+        // сажаю прилетевшие поля
+        @ticketID := Cast(@Body -> {ticketID},"Guid");
+        @url := Cast(@Body -> {url},"String");
+        
+        //$throw(Str(@Body,"Json"));
+
+        if (RegularExpression("^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$", @ticketID) > 0) 
+        begin()
+
+            if(@ticketID<>Null() and @ticketID<>"")
+            begin()
+
+                @qrTicket := query top 1 {TicketID} from "AKUZ.TELECONSULTATION_TICKET"
+                             where {TicketID}=@ticketID;
+
+                if (@qrTicket->Count()>0 )  //----- НАЙДЕНЫ ЛИ ЗАПИСИ ------//
+                foreach(thisEntry in @qrEntries)
+                begin()
+
+
+                    // заполняю поля на отдачу       
+                    @resp := new MAX.SET_TICKET_OUT();
+                    @resp -> {status} := "success";  
+
+
+
+                end
+                else
+                begin()
+                    @status:=206;
+                    @EntrsList->{error} := "Не найдены записи по указанному ticketID";
+                end;
+
+          
+                
+            end else 
+            begin()
+                @status:=206;
+                @resp->{error} := "Не указан параметр ticketID";
+            end;
+        end else
+        begin()
+            @status:=206;
+            @resp->{error} := "Параметр ticketID имеет неверный формат";
+        end;
+
+
+
+        @response.StatusCode := 200;
+        return(@resp);
+    end
+    catch(ex)
+    begin()
+   
+        //@err := @ex -> {InnerException};
+        if (str(IsNull(@ex -> {InnerException},""))<>"")
+            @err:=SubString(str(@ex -> {InnerException}), 0, IndexOf(str(@ex -> {InnerException}),char(13)+char(10)))
+        else
+            @err:="Прочая ошибка";
+ 
+        @resp := new MAX.SET_TICKET_OUT();
+        @resp -> {error} := @err;
+        
+        @response.StatusCode := 500;
+        return(@resp);
+        
+    end;    
+end

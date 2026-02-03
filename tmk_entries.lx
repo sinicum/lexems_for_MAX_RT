@@ -1,0 +1,120 @@
+// Метод /Entries -- Список предстоящих Записей на приём на завтра
+begin(patID, EntrsList, Entry, qrEntries ,status)
+
+    try 
+    begin()
+        
+        // @patID := @querystring["patId"]; //7d29e475-1cab-4ab3-b1e8-bbdc5dad27ae // Тестовый Алексей Данисович
+        @status := 200;
+
+        @EntrsList := new MP.ENTRIES_LIST();
+
+        if (RegularExpression("^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$", @patID) > 0) 
+        begin()
+
+            if(@patID<>Null() and @patID<>"")
+            begin()
+
+                //------- ENTRY_AMBULANCE -------//
+                @qrEntries := query {Ticket / TicketTime}
+                                        ,{Ticket / TicketType}
+                                        ,{EntryPlace} 
+                                        ,{ObjectProperties / ObjectType / EntDesc}
+                                        ,{Place}
+                                        ,{Resource / As AKUZ.POST / Worker / FIO}
+                                        ,{Resource / As AKUZ.POST / Worker / FirstName}
+                                        ,{Resource / As AKUZ.POST / Worker / LastName}
+                                        ,{Resource / As AKUZ.POST / Worker / FatherName}
+                                        ,{Resource / As AKUZ.ROOM / Name}
+                                        ,{Resource / Speciality / Name}
+                                        ,{Resource / Division / Branch / Name}
+                                        ,{Resource / Division / Branch / LpuMain / Name} 
+                            from "AKUZ.ENTRY_AMBULANCE" 
+                            where {AmbulanceEvent / AmbulanceCard / Patient / PatientID} = @patID //where {SentSNILS} = @patSNILS
+                                and {EntryDate} >= param(CURRENT_DATE)
+                            ;
+
+
+                // ============== JSON структура  ==========
+                // {
+                //     "Entries": [ 
+                //         {
+                //             "DateTime": "dd-MM-yyyy HH:mm",              // Дата и время записи
+                //             "TicketType": "string",                      // Тип талона
+                //             "EntryPlace": "string",                      // Место записи
+                //             "EntryType": "string",                       // Тип записи
+                //             "Place" : "123",                             // Кабинт приёма
+                //             "Resource" : "Фамилия И.О. (специальность)", // Врач
+                //             "ResourceName" : "ФИО",                      // ФИО врача или наимнование кабинета полностью
+                //             "Speciality" : "Специальность",              // Специальность
+                //             "Branch": "string",                          // Подразделение
+                //             "LpuName": "string",                         // Наименование МО
+                //         }
+                //     ]
+                // }
+
+                //@EntrsList -> {error} := "";
+
+                if (@qrEntries->Count()>0 )  //----- НАЙДЕНЫ ЛИ ЗАПИСИ ------//
+                foreach(thisEntry in @qrEntries)
+                begin()
+
+                    @Entry := new MP.ENTRY();
+
+                    @Entry->{DateTime} := Str(@thisEntry->{Ticket / TicketTime},"yyyy-MM-dd HH:mm");
+                    @Entry->{TicketType} := Str(@thisEntry -> {Ticket / TicketType});
+                    @Entry->{EntryPlace} := Str(@thisEntry->{EntryPlace});
+                    @Entry->{EntryType} := @thisEntry->{ObjectProperties / ObjectType / EntDesc};
+                    @Entry->{Resource} := @thisEntry->{Resource / As AKUZ.POST / DisplayName};
+                    @Entry->{ResourceName} := IsNull(@thisEntry->{Resource / As AKUZ.ROOM / Name},
+                                            @thisEntry->{Resource / As AKUZ.POST / Worker / LastName} +" "+ 
+                                            @thisEntry->{Resource / As AKUZ.POST / Worker / FirstName}+" "+ 
+                                            IsNull(@thisEntry->{Resource / As AKUZ.POST / Worker / FatherName},"")
+                                        );
+                    @Entry->{Speciality} := @thisEntry->{Resource / Speciality / Name};
+                    @Entry->{Place} := @thisEntry->{Place};
+                    @Entry->{Branch} := @thisEntry ->{Resource / Division / Branch / Name};
+                    @Entry->{LpuName} := @thisEntry ->{Resource / Division / Branch / LpuMain / Name} ;
+
+
+                    @EntrsList->{Entries} -> Add(@Entry);
+                    //@EntrsList->{error} := Str(@Entry,"Json");
+
+                end
+                else
+                begin()
+                    @status:=206;
+                    @EntrsList->{error} := "Не найдены записи по указанному patId";
+                end;
+
+            end else 
+            begin()
+                @status:=206;
+                @EntrsList->{error} := "Не указан параметр patId";
+            end;
+        end else
+        begin()
+            @status:=206;
+            @EntrsList->{error} := "Параметр patId имеет неверный формат";
+        end;
+
+        // @EntrsList->{error} := @qrEntries->Count();
+        
+        @response.StatusCode:=@status;
+        return(@EntrsList);
+    end
+    catch(ex)
+    begin()
+
+        // @ex := IsNull(@ex->{InnerException}->{InnerException}->{InnerException}->{InnerException},
+        //         IsNull(@ex->{InnerException}->{InnerException}->{InnerException},
+        //         IsNull(@ex->{InnerException}->{InnerException},
+        //         IsNull(@ex->{InnerException},@ex))));
+    
+        @status:=500;
+        @response.StatusCode:=@status;
+        @EntrsList->{error} := @ex-> {InnerException};
+        return(@EntrsList);
+
+    end;
+end

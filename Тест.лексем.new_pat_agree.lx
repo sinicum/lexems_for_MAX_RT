@@ -1,0 +1,23 @@
+begin(patAgree, userQr, acQr)
+
+    // 3907befe-c0ba-4d56-9cb7-aaab990e2c68 // моя АК в ГБ7
+    @acQr := query top 1 {AmbulanceCardID} from "AKUZ.AMBULANCE_CARD" where {AmbulanceCardID} = "3907befe-c0ba-4d56-9cb7-aaab990e2c68";
+
+    @userQr := query top 1 {UserID} from "VCLib.BASE_USERS" where {UserID} = param(CURRENT_USER);
+
+    @patAgree := new AKUZ.PATIENT_AGREE (new Apartment());
+    @patAgree ->{AmbulanceCard} := @acQr[0] ;// *Object // AMB_CARD 
+    @patAgree ->{CreationDate} := param(CURRENT_DATE_TIME); // Дата выдачи согласия
+    @patAgree ->{ObjectId} := "00000000-0000-0000-0000-000000000000";  // Идентификатор документа, на которое выдано согласие
+    @patAgree ->{Name} := "11111.zip";
+    @patAgree ->{SaveFileLocation} = 1;
+    @patAgree ->{BaseUsers} := @userQr[0]; //*Object // Пользователь, взявший согласие
+    @patAgree ->{UseOle} := True;
+    @patAgree ->{ObjectEntityId} := 1 ; // Сущность документа, на которое выдано согласие
+    @patAgree ->{AgreeType} := 0; // Тип согласия, 0 - "Согласие"
+    @patAgree ->{FileNameForm} := 1;
+    @patAgree-> Save();
+
+
+
+end
