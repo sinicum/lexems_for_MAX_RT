@@ -1,5 +1,5 @@
 // Метод /Entries -- Список предстоящих Записей на приём на завтра
-begin(patID, EntrsList, Entry, qrEntries ,status)
+begin(patID, EntrsList, Entry, qrEntries, phones ,status)
 
     try 
     begin()
@@ -82,7 +82,7 @@ begin(patID, EntrsList, Entry, qrEntries ,status)
                                         );
                     @Entry->{speciality} := @thisEntry->{Resource / Speciality / Name};
                     @Entry->{patientFIO} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / cFIO};
-                    @Entry->{phonesString} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString};
+                    // @Entry->{phonesString} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString};
                     @Entry->{dateTime} := Str(@thisEntry->{Ticket / TicketTime},"yyyy-MM-dd HH:mm");
                     @Entry->{ticketType} := Str(@thisEntry -> {Ticket / TicketType});
                     @Entry->{entryPlace} := Str(@thisEntry->{EntryPlace});
@@ -93,7 +93,7 @@ begin(patID, EntrsList, Entry, qrEntries ,status)
                     @phones:= @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers};
                     
                     foreach(phone in @phones)
-                    begin()
+                    begin(jPhone)
 
                         @jPhone := new MAX.PHONES(); 
                         @jPhone -> {number} := @phone ->{Number};
