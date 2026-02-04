@@ -16,7 +16,7 @@ begin(moID, patID, EntrsList, Entry, qrEntries, phones ,status)
         //     begin()
 
                 //------- ENTRY_AMBULANCE -------//
-                @qrEntries := query {Ticket / TicketTime}
+                @qrEntries := query {Ticket / TicketID},{Ticket / TicketTime}
                                         ,{Ticket / TicketType}
                                         ,{EntryPlace} 
                                         ,{ObjectProperties / ObjectType / EntDesc}
@@ -30,15 +30,15 @@ begin(moID, patID, EntrsList, Entry, qrEntries, phones ,status)
                                         ,{Resource / Division / Branch / Name}
                                         ,{Resource / Division / Branch / LpuMain / Name} 
                                         ,{AmbulanceEvent / AmbulanceCard / Patient / cFIO}
-                                        ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString}
+                                        //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString}
                                         ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Number}
                                         ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / PhoneType}
-                                        ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / xCleanNumber}
+                                        //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / xCleanNumber}
                                         ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Comment}
                             from "AKUZ.ENTRY_AMBULANCE" 
                             where {Ticket / TicketTime}>=  param(CURRENT_DATE)
-                                 and {AmbulanceEvent / AmbulanceCard / AmbulanceCardID} = new Guid("22fc2421-2d3c-4cd5-979c-9dbe48c68907")
-                                 and {Resource / Division / Branch / LpuMain / LpuID}= @moID
+                                 
+                                and {Resource / Division / Branch / LpuMain / LpuID}= @moID
                                 And {Ticket / TicketType} = 8 
                             order by {Ticket / TicketTime} desc
                             ;
@@ -48,6 +48,7 @@ begin(moID, patID, EntrsList, Entry, qrEntries, phones ,status)
                 // {
                 //     "entries": [
                 //         {
+                //             "ticketID": "uuid",
                 //             "branchName": "string",
                 //             "moName": "string",
                 //             "resourceName": "Фамилия И. О.",
@@ -76,6 +77,7 @@ begin(moID, patID, EntrsList, Entry, qrEntries, phones ,status)
 
                     @Entry := new MAX.ENTRY();
 
+                    @Entry->{ticketID} := @thisEntry -> {Ticket / TicketID};
                     @Entry->{branchName} := @thisEntry ->{Resource / Division / Branch / Name};
                     @Entry->{moName} := @thisEntry ->{Resource / Division / Branch / LpuMain / Name};
                     @Entry->{resourceName} := IsNull(@thisEntry->{Resource / As AKUZ.ROOM / Name},
@@ -84,7 +86,7 @@ begin(moID, patID, EntrsList, Entry, qrEntries, phones ,status)
                                             IsNull(@thisEntry->{Resource / As AKUZ.POST / Worker / FatherName},"")
                                         );
                     @Entry->{speciality} := @thisEntry->{Resource / Speciality / Name};
-                    @Entry->{docPhone} := "9625775703";
+                    @Entry->{docPhone} := "9225014433";
                     @Entry->{patientFIO} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / cFIO};
                     // @Entry->{phonesString} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString};
                     @Entry->{dateTime} := Str(@thisEntry->{Ticket / TicketTime},"yyyy-MM-dd HH:mm");
@@ -101,7 +103,7 @@ begin(moID, patID, EntrsList, Entry, qrEntries, phones ,status)
 
                         @jPhone := new MAX.PHONE(); 
                         @jPhone -> {number} := @phone ->{Number};
-                        @jPhone -> {cleanNumber} := @phone ->{xCleanNumber};
+                        //@jPhone -> {cleanNumber} := @phone ->{xCleanNumber};
                         @jPhone -> {phoneType} := @phone -> Str({PhoneType});
                         if(@phone ->{Comment}<>Null()) @jPhone -> {comment} := @phone ->{Comment};
 
