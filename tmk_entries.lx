@@ -95,11 +95,11 @@ begin(patID, EntrsList, Entry, qrEntries, phones ,status)
                     foreach(phone in @phones)
                     begin(jPhone)
 
-                        @jPhone := new MAX.PHONES(); 
+                        @jPhone := new MAX.PHONE(); 
                         @jPhone -> {number} := @phone ->{Number};
                         @jPhone -> {cleanNumber} := @phone ->{xCleanNumber};
-                        @jPhone -> {phoneType} := @phone ->{PhoneType};
-                        if(@phone ->{comment}<>Null()) @jPhone -> {comment} := @phone ->{Comment};
+                        @jPhone -> {phoneType} := @phone -> Str({PhoneType});
+                        if(@phone ->{Comment}<>Null()) @jPhone -> {comment} := @phone ->{Comment};
 
                         @Entry->{phones} -> Add(@jPhone);
                     end;
