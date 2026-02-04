@@ -1,10 +1,10 @@
 // Метод /Entries -- Список предстоящих Записей на приём на завтра
-begin(patID, EntrsList, Entry, qrEntries, phones ,status)
+begin(moID, patID, EntrsList, Entry, qrEntries, phones ,status)
 
     try 
     begin()
         
-        //@moID := @querystring["moID"]; //86d71c0d-bb2f-4c0d-b42b-abe3fcc3057d	1.2.643.5.1.13.13.12.2.16.1163	ГАУЗ "ГКБ №7 им. М.Н.Садыкова"	420137, г.Казань, ул.Маршала Чуйкова, д.54 // ГКБ 7
+        @moID := "585a2851-e999-40a6-8979-79aecbfc2e89";// @querystring["moID"]; //  1.2.643.5.1.13.13.12.2.16.1163	ГАУЗ "ГКБ №7 им. М.Н.Садыкова"	420137, г.Казань, ул.Маршала Чуйкова, д.54 // ГКБ 7
         @status := 200;
 
         @EntrsList := new MAX.ENTRIES_LIST();
@@ -36,36 +36,39 @@ begin(patID, EntrsList, Entry, qrEntries, phones ,status)
                                         ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / xCleanNumber}
                                         ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Comment}
                             from "AKUZ.ENTRY_AMBULANCE" 
-                            where  
-                                //{Resource / Division / Branch / LpuMain / LpuID}=@moID
-                                //{AmbulanceEvent / AmbulanceCard / Patient / PatientID} = @patID //where {SentSNILS} = @patSNILS
-                                //and {EntryDate} >= param(CURRENT_DATE)
-                                 {Ticket / TicketTime}>=  param(CURRENT_DATE)
+                            where {Ticket / TicketTime}>=  param(CURRENT_DATE)
+                                 and {AmbulanceEvent / AmbulanceCard / AmbulanceCardID} = new Guid("22fc2421-2d3c-4cd5-979c-9dbe48c68907")
+                                 and {Resource / Division / Branch / LpuMain / LpuID}= @moID
                                 And {Ticket / TicketType} = 8 
                             order by {Ticket / TicketTime} desc
                             ;
 
 
-                // ============== JSON структура  ==========
+                // ============== JSON структура  ==============
                 // {
-                //     "entries": [ 
+                //     "entries": [
                 //         {
-                //             "branchName": "string",                      // Подразделение
-                //             "moName": "string",                          // Наименование МО
-                //             "resourceName" : "ФИО",                      // ФИО врача или наимнование кабинета полностью
-                //             "speciality" : "Специальность"               // Специальность
-                //             "patientFIO" 
-                //             "phonesString"
-                //             "dateTime": "dd-MM-yyyy HH:mm",              // Дата и время записи
-                //             "ticketType": "string",                      // Тип талона
-                //             "entryPlace": "string",                      // Место записи
-                //             "entryType": "string",                       // Тип записи
-                //             "place" : "123",                             // Кабинт приёма
+                //             "branchName": "string",
+                //             "moName": "string",
+                //             "resourceName": "Фамилия И. О.",
+                //             "speciality": "Специальность",
+                //             "docPhone" : "",
+                //             "patientFIO": "Фамилия Имя Отчество",
+                //             "dateTime": "dd-MM-yyyy HH:mm",
+                //             "ticketType": "string",
+                //             "entryPlace": "string",
+                //             "entryType": "string",
+                //             "place": "123",
+                //             "phones": [
+                //                 {
+                //                     "number": "+7(905)999-99-99",
+                //                     "cleanNumber": "9053999999",
+                //                     "phoneType": "моб."
+                //                 }
+                //             ]
                 //         }
                 //     ]
                 // }
-
-                //@EntrsList -> {error} := "";
 
                 if (@qrEntries->Count()>0 )  //----- НАЙДЕНЫ ЛИ ЗАПИСИ ------//
                 foreach(thisEntry in @qrEntries)
@@ -81,6 +84,7 @@ begin(patID, EntrsList, Entry, qrEntries, phones ,status)
                                             IsNull(@thisEntry->{Resource / As AKUZ.POST / Worker / FatherName},"")
                                         );
                     @Entry->{speciality} := @thisEntry->{Resource / Speciality / Name};
+                    @Entry->{docPhone} := "9625775703";
                     @Entry->{patientFIO} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / cFIO};
                     // @Entry->{phonesString} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString};
                     @Entry->{dateTime} := Str(@thisEntry->{Ticket / TicketTime},"yyyy-MM-dd HH:mm");
