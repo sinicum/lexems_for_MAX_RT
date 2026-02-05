@@ -1,0 +1,180 @@
+// Ресурс /tmk_entries -- Список предстоящих Записей на приём 
+begin(moID, patID, EntrsList, Entry, qrEntries, resID, docPhone, patID, patPhone, phones ,status)
+
+    declare MAX.ENTRY(
+        main: MAX.ENTRIES_LIST,
+        ticketID: string,
+        dateTime: string,
+        branchName: string,
+        moName: string,
+        resourceName: string,
+        speciality: string,
+        docPhone: string,
+        patientFIO: string,
+        patPhone: string
+    );
+
+    declare MAX.ENTRIES_LIST(
+        error: string,
+        entries: MAX.ENTRY[main]
+    );
+
+    //try 
+    //begin()
+        
+        @moID := "585a2851-e999-40a6-8979-79aecbfc2e89";// @querystring["moID"]; //  1.2.643.5.1.13.13.12.2.16.1163 ГАУЗ "ГКБ №7 им. М.Н.Садыкова"  420137, г.Казань, ул.Маршала Чуйкова, д.54 // ГКБ 7
+        @status := 200;
+
+        @EntrsList := new MAX.ENTRIES_LIST();
+
+        // if (RegularExpression("^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$", @moID) > 0) 
+        // begin()
+
+        //     if(@moID<>Null() and @moID<>"")
+        //     begin()
+
+                //------- ENTRY_AMBULANCE -------//
+                @qrEntries := query {Ticket / TicketID},{Ticket / TicketTime}
+                                        //,{Ticket / TicketType}
+                                        //,{EntryPlace} 
+                                        //,{ObjectProperties / ObjectType / EntDesc}
+                                        //,{Place}
+                                        ,{Resource / ResourceID}
+                                        ,{Resource / As AKUZ.POST / Worker / FIO}
+                                        ,{Resource / As AKUZ.POST / Worker / FirstName}
+                                        ,{Resource / As AKUZ.POST / Worker / LastName}
+                                        ,{Resource / As AKUZ.POST / Worker / FatherName}
+                                        ,{Resource / As AKUZ.ROOM / Name}
+                                        ,{Resource / Speciality / Name}
+                                        ,{Resource / Division / Branch / Name}
+                                        ,{Resource / Division / Branch / LpuMain / Name}
+                                        ,{AmbulanceEvent / AmbulanceCard / Patient / PatientID}
+                                        ,{AmbulanceEvent / AmbulanceCard / Patient / cFIO}
+                                        //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString}
+                                        ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Number}
+                                        ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / PhoneType}
+                                        //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / xCleanNumber}
+                                        ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Comment}
+                            from "AKUZ.ENTRY_AMBULANCE" 
+                            where {Ticket / TicketTime}>=  param(CURRENT_DATE)
+                                 
+                                and {Resource / Division / Branch / LpuMain / LpuID}= @moID
+                                And {Ticket / TicketType} = 8 
+                            //order by {Ticket / TicketTime} desc
+                            ;
+
+
+                // ============== JSON структура  ==============
+                // {
+                //     "entries": [
+                //         {
+                //             "ticketID": "uuid",
+                //             "branchName": "string",
+                //             "moName": "string",
+                //             "resourceName": "Фамилия Имя Отчество",
+                //             "speciality": "Специальность",
+                //             "docPhone" : "7ХХХХХХХХХ",   // 11 цифр, начиная с «7»
+                //             "patientFIO": "Фамилия Имя Отчество",
+                //             "dateTime": "dd-MM-yyyy HH:mm",
+                //             "patPhone": "+7(999)888-88-77"
+                //         }
+                //     ]
+                // }
+
+                if (@qrEntries->Count()>0 )  //----- НАЙДЕНЫ ЛИ ЗАПИСИ ------//
+                foreach(thisEntry in @qrEntries)
+                begin()
+
+                
+                    @Entry := new MAX.ENTRY();
+
+                    @Entry->{ticketID} := @thisEntry -> {Ticket / TicketID};
+                    @Entry->{branchName} := @thisEntry ->{Resource / Division / Branch / Name};
+                    @Entry->{moName} := @thisEntry ->{Resource / Division / Branch / LpuMain / Name};
+                    @Entry->{resourceName} := IsNull(@thisEntry->{Resource / As AKUZ.ROOM / Name},
+                                            @thisEntry->{Resource / As AKUZ.POST / Worker / LastName} +" "+ 
+                                            @thisEntry->{Resource / As AKUZ.POST / Worker / FirstName}+" "+ 
+                                            IsNull(@thisEntry->{Resource / As AKUZ.POST / Worker / FatherName},"")
+                                        );
+                    @Entry->{speciality} := @thisEntry->{Resource / Speciality / Name};
+
+                    @resID := @thisEntry-> {Resource / ResourceID};
+                    @docPhone := select top 1 {Id2FA} from "VCLib.LOGIN" 
+                                 where {Id2FA} <> Null() 
+                                    And ChildExists({Identity / BaseUserss}, {As AKUZ.USERS / Post / ResourceID} = @resID);
+                    if (@docPhone -> Count() > 0)
+                        @Entry->{docPhone} := @docPhone[0][0]; //"9225014433";
+
+                    @Entry->{patientFIO} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / cFIO};
+                    // @Entry->{phonesString} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString};
+                    @Entry->{dateTime} := Str(@thisEntry->{Ticket / TicketTime},"yyyy-MM-dd HH:mm");
+                    //@Entry->{ticketType} := Str(@thisEntry -> {Ticket / TicketType});
+                    //@Entry->{entryPlace} := Str(@thisEntry->{EntryPlace});
+                    //@Entry->{entryType} := @thisEntry->{ObjectProperties / ObjectType / EntDesc};
+                    //@Entry->{Resource} := @thisEntry->{Resource / As AKUZ.POST / DisplayName};
+                    // @Entry->{place} := @thisEntry->{Place};
+
+                    
+                    
+                     @patID := @thisEntry ->{AmbulanceEvent / AmbulanceCard / Patient / PatientID};
+                     @patPhone := select top 1 {Number} from "AKUZ.PHONE_NUMBER"
+                                  where {Patient / PatientID} = @patID
+                                        And {Number} <> Null()
+                                        And {PhoneType} = 3
+                                  order by {AddedDate} desc;
+                     if (@patPhone -> Count() > 0)
+                     @Entry->{patPhone} := @patPhone[0][0]; //"9225014433";
+                    
+
+//                    @phones:= @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers};
+//                    foreach(phone in @phones)
+//                    begin(jPhone)
+//
+//                        @jPhone := new MAX.PHONE(); 
+//                        @jPhone -> {number} := @phone ->{Number};
+//                        //@jPhone -> {cleanNumber} := @phone ->{xCleanNumber};
+//                        @jPhone -> {phoneType} := @phone -> Str({PhoneType});
+//                        if(@phone ->{Comment}<>Null()) @jPhone -> {comment} := @phone ->{Comment};
+//
+//                        @Entry->{phones} -> Add(@jPhone);
+//                    end;
+//
+                    @EntrsList->{entries} -> Add(@Entry);
+                    
+                    //$throw(Str(Str(@Entry,"Json")));
+
+                end
+                else
+                begin()
+                    @status:=206;
+                    @EntrsList->{error} := "Не найдены записи ";
+                end;
+
+        //     end else 
+        //     begin()
+        //         @status:=206;
+        //         @EntrsList->{error} := "Не указан параметр patId";
+        //     end;
+        // end else
+        // begin()
+        //     @status:=206;
+        //     @EntrsList->{error} := "Параметр patId имеет неверный формат";
+        // end;
+
+        // @EntrsList->{error} := @qrEntries->Count();
+        
+        //@response.StatusCode:=@status;
+        //print(Str(@EntrsList),"Json");
+        $throw(Str(Str(@EntrsList,"Json")));
+//    end
+//    catch(ex)
+//    begin()
+//
+//    
+//        @status:=500;
+//        //@response.StatusCode:=@status;
+//        @EntrsList->{error} := @ex-> {InnerException};
+//        return(@EntrsList);
+//
+//    end;
+end
