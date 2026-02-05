@@ -1,5 +1,5 @@
-// Ресурс /Entries -- Список предстоящих Записей на приём на завтра
-begin(moID, patID, EntrsList, Entry, qrEntries, resID, docPhone, patPhone, phones ,status)
+// Ресурс /tmk_entries -- Список предстоящих Записей на приём на завтра
+begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patPhone, phones ,status)
 
     // declare MAX.ENTRY(
     //     main: MAX.ENTRIES_LIST,
@@ -23,6 +23,8 @@ begin(moID, patID, EntrsList, Entry, qrEntries, resID, docPhone, patPhone, phone
     begin()
         
         @moID := "585a2851-e999-40a6-8979-79aecbfc2e89";// @querystring["moID"]; //  1.2.643.5.1.13.13.12.2.16.1163	ГАУЗ "ГКБ №7 им. М.Н.Садыкова"	420137, г.Казань, ул.Маршала Чуйкова, д.54 // ГКБ 7
+        @excludeMO := "465ceb83-2722-4404-8261-2012a0b6ec4d";  // ГАУЗ "РКОД МЗ РТ им. проф. М.З. Сигала"
+
         @status := 200;
 
         @EntrsList := new MAX.ENTRIES_LIST();
@@ -57,8 +59,8 @@ begin(moID, patID, EntrsList, Entry, qrEntries, resID, docPhone, patPhone, phone
                                         ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Comment}
                             from "AKUZ.ENTRY_AMBULANCE" 
                             where {Ticket / TicketTime}>=  param(CURRENT_DATE)
-                                 
-                                and {Resource / Division / Branch / LpuMain / LpuID}= @moID
+                                and {Resource / Division / Branch / LpuMain / LpuID} <> @excludeMO
+                                // and {Resource / Division / Branch / LpuMain / LpuID} = @moID
                                 And {Ticket / TicketType} = 8 
                             //order by {Ticket / TicketTime} desc
                             ;
