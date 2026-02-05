@@ -1,5 +1,23 @@
-// Метод /Entries -- Список предстоящих Записей на приём на завтра
-begin(moID, patID, EntrsList, Entry, qrEntries, phones ,status)
+// Ресурс /Entries -- Список предстоящих Записей на приём на завтра
+begin(moID, patID, EntrsList, Entry, qrEntries, resID, docPhone, patPhone, phones ,status)
+
+    // declare MAX.ENTRY(
+    //     main: MAX.ENTRIES_LIST,
+    //     ticketID: string,
+    //     dateTime: string,
+    //     branchName: string,
+    //     moName: string,
+    //     resourceName: string,
+    //     speciality: string,
+    //     docPhone: string,
+    //     patientFIO: string,
+    //     patPhone: string
+    // );
+
+    // declare MAX.ENTRIES_LIST(
+    //     error: string,
+    //     entries: MAX.ENTRY[main]
+    // );
 
     try 
     begin()
@@ -17,10 +35,11 @@ begin(moID, patID, EntrsList, Entry, qrEntries, phones ,status)
 
                 //------- ENTRY_AMBULANCE -------//
                 @qrEntries := query {Ticket / TicketID},{Ticket / TicketTime}
-                                        ,{Ticket / TicketType}
-                                        ,{EntryPlace} 
-                                        ,{ObjectProperties / ObjectType / EntDesc}
-                                        ,{Place}
+                                        //,{Ticket / TicketType}
+                                        //,{EntryPlace} 
+                                        //,{ObjectProperties / ObjectType / EntDesc}
+                                        //,{Place}
+                                        ,{Resource / ResourceID}
                                         ,{Resource / As AKUZ.POST / Worker / FIO}
                                         ,{Resource / As AKUZ.POST / Worker / FirstName}
                                         ,{Resource / As AKUZ.POST / Worker / LastName}
@@ -28,7 +47,8 @@ begin(moID, patID, EntrsList, Entry, qrEntries, phones ,status)
                                         ,{Resource / As AKUZ.ROOM / Name}
                                         ,{Resource / Speciality / Name}
                                         ,{Resource / Division / Branch / Name}
-                                        ,{Resource / Division / Branch / LpuMain / Name} 
+                                        ,{Resource / Division / Branch / LpuMain / Name}
+                                        ,{AmbulanceEvent / AmbulanceCard / Patient / PatientID}
                                         ,{AmbulanceEvent / AmbulanceCard / Patient / cFIO}
                                         //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString}
                                         ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Number}
@@ -40,7 +60,7 @@ begin(moID, patID, EntrsList, Entry, qrEntries, phones ,status)
                                  
                                 and {Resource / Division / Branch / LpuMain / LpuID}= @moID
                                 And {Ticket / TicketType} = 8 
-                            order by {Ticket / TicketTime} desc
+                            //order by {Ticket / TicketTime} desc
                             ;
 
 
@@ -51,22 +71,12 @@ begin(moID, patID, EntrsList, Entry, qrEntries, phones ,status)
                 //             "ticketID": "uuid",
                 //             "branchName": "string",
                 //             "moName": "string",
-                //             "resourceName": "Фамилия И. О.",
+                //             "resourceName": "Фамилия Имя Отчество",
                 //             "speciality": "Специальность",
-                //             "docPhone" : "",
+                //             "docPhone" : "7ХХХХХХХХХ",   // 11 цифр, начиная с «7»
                 //             "patientFIO": "Фамилия Имя Отчество",
                 //             "dateTime": "dd-MM-yyyy HH:mm",
-                //             "ticketType": "string",
-                //             "entryPlace": "string",
-                //             "entryType": "string",
-                //             "place": "123",
-                //             "phones": [
-                //                 {
-                //                     "number": "+7(905)999-99-99",
-                //                     "cleanNumber": "9053999999",
-                //                     "phoneType": "моб."
-                //                 }
-                //             ]
+                //             "patPhone": "+7(999)888-88-77"
                 //         }
                 //     ]
                 // }
@@ -86,29 +96,46 @@ begin(moID, patID, EntrsList, Entry, qrEntries, phones ,status)
                                             IsNull(@thisEntry->{Resource / As AKUZ.POST / Worker / FatherName},"")
                                         );
                     @Entry->{speciality} := @thisEntry->{Resource / Speciality / Name};
-                    @Entry->{docPhone} := "9225014433";
+
+                    @resID := @thisEntry-> {Resource / ResourceID};
+                    @docPhone := select top 1 {Id2FA} from "VCLib.LOGIN" 
+                                 where {Id2FA} <> Null() 
+                                    And ChildExists({Identity / BaseUserss}, {As AKUZ.USERS / Post / ResourceID} = @resID);
+                    if (@docPhone -> Count() > 0)
+                        @Entry->{docPhone} := @docPhone[0][0]; //"9225014433";
+
                     @Entry->{patientFIO} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / cFIO};
                     // @Entry->{phonesString} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString};
                     @Entry->{dateTime} := Str(@thisEntry->{Ticket / TicketTime},"yyyy-MM-dd HH:mm");
-                    @Entry->{ticketType} := Str(@thisEntry -> {Ticket / TicketType});
-                    @Entry->{entryPlace} := Str(@thisEntry->{EntryPlace});
-                    @Entry->{entryType} := @thisEntry->{ObjectProperties / ObjectType / EntDesc};
+                    //@Entry->{ticketType} := Str(@thisEntry -> {Ticket / TicketType});
+                    //@Entry->{entryPlace} := Str(@thisEntry->{EntryPlace});
+                    //@Entry->{entryType} := @thisEntry->{ObjectProperties / ObjectType / EntDesc};
                     //@Entry->{Resource} := @thisEntry->{Resource / As AKUZ.POST / DisplayName};
-                    @Entry->{place} := @thisEntry->{Place};
+                    // @Entry->{place} := @thisEntry->{Place};
+                                       
 
-                    @phones:= @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers};
+                    @patID := @thisEntry ->{AmbulanceEvent / AmbulanceCard / Patient / PatientID};
+                    @patPhone := select top 1 {Number} from "AKUZ.PHONE_NUMBER"
+                                where {Patient / PatientID} = @patID
+                                    And {Number} <> Null()
+                                    And {PhoneType} = 3
+                                order by {AddedDate} desc;
+                    if (@patPhone -> Count() > 0)
+                    @Entry->{patPhone} := @patPhone[0][0]; //"9225014433";
                     
-                    foreach(phone in @phones)
-                    begin(jPhone)
 
-                        @jPhone := new MAX.PHONE(); 
-                        @jPhone -> {number} := @phone ->{Number};
-                        //@jPhone -> {cleanNumber} := @phone ->{xCleanNumber};
-                        @jPhone -> {phoneType} := @phone -> Str({PhoneType});
-                        if(@phone ->{Comment}<>Null()) @jPhone -> {comment} := @phone ->{Comment};
+                    // @phones:= @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers};
+                    // foreach(phone in @phones)
+                    // begin(jPhone)
 
-                        @Entry->{phones} -> Add(@jPhone);
-                    end;
+                    //     @jPhone := new MAX.PHONE(); 
+                    //     @jPhone -> {number} := @phone ->{Number};
+                    //     //@jPhone -> {cleanNumber} := @phone ->{xCleanNumber};
+                    //     @jPhone -> {phoneType} := @phone -> Str({PhoneType});
+                    //     if(@phone ->{Comment}<>Null()) @jPhone -> {comment} := @phone ->{Comment};
+
+                    //     @Entry->{phones} -> Add(@jPhone);
+                    // end;
 
                     @EntrsList->{entries} -> Add(@Entry);
                     //@EntrsList->{error} := Str(@Entry,"Json");
