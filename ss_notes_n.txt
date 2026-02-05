@@ -3,6 +3,12 @@
 https://vitacore.bitrix24.ru/company/personal/user/112/tasks/task/view/51232
 Реализация родительного падежа пациента 
 Соисполнитель с Сергеем Галанцевым
+[ТЕСТИРОВАНИЕ]
+
+
+https://vitacore.bitrix24.ru/company/personal/user/112/tasks/task/view/50708/
+Показать Рамилю критерии в Индикаторах для согласования скорости
+Чек-лист 1 - Индикаторы из НАО
 
 https://vitacore.bitrix24.ru/workgroups/group/332/tasks/task/view/43886/
 Перенос карт ДН на другого Лечащего врача
