@@ -31,11 +31,10 @@ begin(ticketID, url, resp ,status, err)
                 else
                 begin()
                     @status:=206;
-                    @EntrsList->{error} := "Не найдены записи по указанному ticketID";
+                    @resp->{error} := "Не найдены записи по указанному ticketID";
                 end;
 
-          
-                
+
             end else 
             begin()
                 @status:=206;
@@ -49,17 +48,17 @@ begin(ticketID, url, resp ,status, err)
 
 
 
-        @response.StatusCode := 200;
+        @response.StatusCode := 207;
         return(@resp);
     end
     catch(ex)
     begin()
    
-        //@err := @ex -> {InnerException};
-        if (str(IsNull(@ex -> {InnerException},""))<>"")
-            @err:=SubString(str(@ex -> {InnerException}), 0, IndexOf(str(@ex -> {InnerException}),char(13)+char(10)))
-        else
-            @err:="Прочая ошибка";
+        @err := @ex -> {InnerException};
+        // if (str(IsNull(@ex -> {InnerException},""))<>"")
+        //     @err:=SubString(str(@ex -> {InnerException}), 0, IndexOf(str(@ex -> {InnerException}),char(13)+char(10)))
+        // else
+        //     @err:="Прочая ошибка";
  
         @resp := new MAX.SET_TICKET_OUT();
         @resp -> {error} := @err;
