@@ -1,49 +1,42 @@
-begin(ticketID, url, resp ,status, err)
+// Сервис отправки (для нас получения) URL /set_ticket_url
+begin(ticketID, url, qrTicket, resp ,status, err)
     try
     begin()
         // сажаю прилетевшие поля
-        @ticketID := Cast(@Body -> {ticketID},"Guid");
-        @url := Cast(@Body -> {url},"String");
+        @ticketID := @Body -> {ticketID};
+        @url := @Body -> {url};
         
-        //$throw(Str(@Body,"Json"));
+        @resp := new MAX.SET_TICKET_OUT();
 
         if (RegularExpression("^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$", @ticketID) > 0) 
         begin()
 
-            if(@ticketID<>Null() and @ticketID<>"")
+            @qrTicket := query top 1 {TicketID} from "AKUZ.TELECONSULTATION_TICKET"
+                            where {TicketID}=@ticketID;
+
+            if (@qrTicket->Count()>0 )  //----- НАЙДЕНЫ ЛИ ЗАПИСИ ------//
+            foreach(thisTicket in @qrTicket)
             begin()
 
-                @qrTicket := query top 1 {TicketID} from "AKUZ.TELECONSULTATION_TICKET"
-                             where {TicketID}=@ticketID;
-
-                if (@qrTicket->Count()>0 )  //----- НАЙДЕНЫ ЛИ ЗАПИСИ ------//
-                foreach(thisEntry in @qrEntries)
-                begin()
+                @thisTicket -> {TeleconsultationUrl} := @url;
+                @thisTicket -> Save();
+                // заполняю поля на отдачу
+                @resp -> {status} := "success";
 
 
-                    // заполняю поля на отдачу       
-                    @resp := new MAX.SET_TICKET_OUT();
-                    @resp -> {status} := "success";  
-
-
-
-                end
-                else
-                begin()
-                    @status:=206;
-                    @resp->{error} := "Не найдены записи по указанному ticketID";
-                end;
-
-
-            end else 
+            end
+            else
             begin()
                 @status:=206;
-                @resp->{error} := "Не указан параметр ticketID";
+                @resp->{error} := "Не найдены записи по указанному ticketID";
             end;
+
+
+
         end else
         begin()
             @status:=206;
-            @resp->{error} := "Параметр ticketID имеет неверный формат";
+            @resp->{error} := "Параметр ticketID имеет неверный формат. Идентификатор GUID должен содержать 32 цифры и 4 дефиса (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).";
         end;
 
 
@@ -54,7 +47,13 @@ begin(ticketID, url, resp ,status, err)
     catch(ex)
     begin()
    
-        @err := @ex -> {InnerException};
+        @err := @ex->{InnerException};
+        // $throw(@err);
+
+        while (RegExMatch("--> ", @err, "All")->Count()-1>0 )
+             @err := SubString(@err,IndexOf(@err,"--> ")+4,StringLen(@err));
+
+        @err := SubString(@err,IndexOf(@err,":")+2,IndexOf(@err,Char(13))-IndexOf(@err,":")-2 );
         // if (str(IsNull(@ex -> {InnerException},""))<>"")
         //     @err:=SubString(str(@ex -> {InnerException}), 0, IndexOf(str(@ex -> {InnerException}),char(13)+char(10)))
         // else
