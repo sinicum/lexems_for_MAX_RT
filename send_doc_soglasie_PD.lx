@@ -1,5 +1,5 @@
 // отправка документа через робот в МАХ. РТ (Татарстан)
-begin(phone, body, headers, address, sectBD, sectMD, sessionID,
+begin(phone, req, headers, address, sectBD, sectMD, sessionID,
 response, result, statusCode, json, json2, err){
     {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{Patient / PhoneNumbersString}
 }
@@ -73,64 +73,103 @@ response, result, statusCode, json, json2, err){
 
     //@sectDT := new MAX.DEAL_TYPE();
 
-    @body := new MAX.SEND_DOCUMENTS();
+    @req := new MAX.SEND_DOCUMENTS();
 
         // @sectDT := new MAX.DEAL_TYPE();
         // @sectDT -> {id} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4";
-    @body -> {dealTypes} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4";
+    @req -> {dealTypes} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4";
 
         @sectBD := new MAX.BUSINESS_DATA();
         @sectBD -> {ogrnExecutor}:= {.}->{CardLpu / OGRNCode};
         @sectBD -> {innExecutor}:= {.}->{CardLpu / InnCode};
         @sectBD -> {kppExecutor}:= {.}->{CardLpu / KppCode};
 
-    @body -> {businessData} := @sectBD;
+    @req -> {businessData} := @sectBD;
 
         @sectMD := new MAX.MEDICAL_DATA();
     
-    @body -> {medicalData} := @sectMD;
+    @req -> {medicalData} := @sectMD;
     
     @phone := "79625775703"; // телефон Всеволода
     //@phone := "79172367682"; // мой
     //@phone := {.}->{Patient / PhoneNumbersString};
 
-    @body -> {departmentId}:= "b661d2dd-bfe1-4ec9-970f-89167695cd7c";
-    @body -> {phoneNumber} := @phone;//"79625775703";
+    @req -> {departmentId}:= "b661d2dd-bfe1-4ec9-970f-89167695cd7c";
+    @req -> {phoneNumber} := @phone;//"79625775703";
 
-    // if (@phone <> Null())
-    // begin(mbb,mbi,str, mb, p)
+    if (@phone <> Null())
+    begin(mbb,mbi,str, mb, p)
 
-    //     @mbb := 3; // MessageBoxButtons - YesNo
-    //     @mbi := 8; // MessageBoxIcon
+        @mbb := 3; // MessageBoxButtons - YesNo
+        @mbi := 8; // MessageBoxIcon
 
-    //     @str:= "ВНИМАНИЕ!" + Char(13) + "Этот номер телефона:" 
-    //         + Char(13) + @phone
-    //         + Char(13) + "совпадает с номером телефона в аккаунте приложения MAX?"
-    //         + Char(13) + Char(13) +"Да - Продолжить?"
-    //         + Char(13) + "Нет - Показать тело запроса и выйти?";
-    //     @mb := new MessageBoxInfo(@str, "Заголовок", @mbb, @mbi); // 8 - Warning
-    //     @p := new Process("GenerateMessageBoxOnClient", @mb);
-    //     @p -> Run();
+        @str:= "ВНИМАНИЕ!" + Char(13) + "Этот номер телефона:" 
+            + Char(13) + @phone
+            + Char(13) + "совпадает с номером телефона в аккаунте приложения MAX?"
+            + Char(13) + Char(13) +"Да - Продолжить?"
+            + Char(13) + "Нет - Показать тело запроса и выйти?";
+        @mb := new MessageBoxInfo(@str, "Заголовок", @mbb, @mbi); // 8 - Warning
+        @p := new Process("GenerateMessageBoxOnClient", @mb);
+        @p -> Run();
 
-    //     if(@mb.DialogResult<>6) 
-    //     begin(str2, mb2, p2)
-    //         // @str2:= "Выберите «Попробовать снова»";
-    //         // @mb2 := new MessageBoxInfo(@str2, "ВНИМАНИЕ! Так нельзя!", 0, 7); // 7 - Error
-    //         // @p2 := new Process("GenerateMessageBoxOnClient", @mb2);
-    //         // @p2 -> Run();
-    //         @json := Replace(Replace(Str(@body,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
-    //         $throw new ClientException(@json,"Тело запроса");
-    //         return();
-    //     end;
+        if(@mb.DialogResult<>6) 
+        begin(str2, mb2, p2)
+            // @str2:= "Выберите «Попробовать снова»";
+            // @mb2 := new MessageBoxInfo(@str2, "ВНИМАНИЕ! Так нельзя!", 0, 7); // 7 - Error
+            // @p2 := new Process("GenerateMessageBoxOnClient", @mb2);
+            // @p2 -> Run();
+            @json := Replace(Replace(Str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
+            $throw new ClientException(@json,"Тело запроса");
+            return();
+        end;
 
-    // end;
+    end;
 
 
-    @sessionID := param(USER_SESSION_ID);
+    @sessionID := "035b92d7-e5d2-4132-95e0-22dbf3efdecd";//param(USER_SESSION_ID);
+
+    /////// ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ
+    begin(p2)
+        @p2 := new Process("SendMessageClient");
+        @p2->{Parameters}["Session"] := @sessionID;
+        @p2->{Parameters}["Caption"] := "Hello";
+        @p2->{Parameters}["Message"] := "!!!!!!!!!";//@json2;
+        @p2->Run()[@p2];
+    end;
+    
+
+    /// --------------- CURL 1 / // ГКБ7
+    // curl -v -H "Content-Type: application/json; charset=utf-8" -H "Authorization: Basic 0JDQtNC80LjQvdC40YHRgtGA0LDRgtC+0YA6" -d "{\"dealTypes\": \"95966dd5-6ae1-4606-8d17-905b35a4f3a4\",\"businessData\": {\"ogrnExecutor\": \"1021603148269\",\"innExecutor\": \"1658012247\",\"kppExecutor\": \"165701001\"},\"medicalData\": {},\"departmentId\": \"b661d2dd-bfe1-4ec9-970f-89167695cd7c\",\"phoneNumber\": \"79625775703\"}" http://10.224.105.150:3000/max_prod_gk/hs/sign_documents/sendDocumetns
+    // http://10.224.105.150:3000
+    // {
+    //     "dealTypes": "95966dd5-6ae1-4606-8d17-905b35a4f3a4",
+    //     "businessData": {                        
+    //         "ogrnExecutor": "1021603148269",
+    //         "innExecutor": "1658012247",
+    //         "kppExecutor": "165701001"
+    //     },
+    //     "medicalData": {},
+    //     "departmentId": "b661d2dd-bfe1-4ec9-970f-89167695cd7c",
+    //     "phoneNumber": "79625775703"         // Всеволод
+    // }
+
+    ////----- curl 2 / Отловлен в теле запроса / СПАСЕНИЕ
+    // curl -v -H "Content-Type: application/json; charset=utf-8" -H "Authorization: Basic 0JDQtNC80LjQvdC40YHRgtGA0LDRgtC+0YA6" -d "{\"dealTypes\": \"95966dd5-6ae1-4606-8d17-905b35a4f3a4\",\"businessData\": {\"ogrnExecutor\": \"1121690035532\",\"innExecutor\": \"1659120340\",\"kppExecutor\": \"165901001\"},\"medicalData\": {},\"departmentId\": \"b661d2dd-bfe1-4ec9-970f-89167695cd7c\",\"phoneNumber\": \"79625775703\"}" http://10.224.24.55/max_prod_gk/hs/sign_documents/sendDocumetns
+    // http://10.224.24.55
+    // {
+    //     "dealTypes": "95966dd5-6ae1-4606-8d17-905b35a4f3a4",
+    //     "businessData": {
+    //         "ogrnExecutor": "1121690035532",
+    //         "innExecutor": "1659120340",
+    //         "kppExecutor": "165901001"
+    //     },
+    //     "medicalData": {},
+    //     "departmentId": "b661d2dd-bfe1-4ec9-970f-89167695cd7c",
+    //     "phoneNumber": "79625775703"
+    // }
+
 
     ////////////   СЕРВЕРНАЯ ЧАСТЬ   ////////////
-
-
 
     @headers:= new Hashtable();
     @headers["Authorization"] := "Basic 0JDQtNC80LjQvdC40YHRgtGA0LDRgtC+0YA6";
@@ -141,7 +180,7 @@ response, result, statusCode, json, json2, err){
 
     // try
     // begin()
-        @response := $Send POST Request to @address with headers @headers data @body {dealTypes}
+        @response := $Send POST Request to @address with headers @headers data @req {dealTypes}
             ,{businessData / ogrnExecutor}
             ,{businessData / innExecutor}
             ,{businessData / innExecutor}
