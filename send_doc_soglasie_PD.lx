@@ -1,5 +1,5 @@
 // отправка документа через робот в МАХ. РТ (Татарстан)
-begin(phone, body, headers, address, sectBD, sectMD, sessionID
+begin(phone, body, headers, address, sectBD, sectMD, sessionID,
 response, result, statusCode, json, json2, err){
     {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{Patient / PhoneNumbersString}
 }
