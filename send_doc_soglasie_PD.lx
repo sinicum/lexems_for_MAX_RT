@@ -1,0 +1,143 @@
+// отправка документа через робот в МАХ. РТ (Татарстан)
+begin(body, headers, address, sectBD, sectMD, response, result, statusCode, json, json2){
+    {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode}
+}
+    // SendDocumentsRequest
+
+    //   required:
+    //     - dealTypes      array
+    //     - businessData   object
+    //     - departmentId   string
+    //     - phoneNumber    string
+
+    //     - medicalData
+    // - Константин: по факту, будем ждать только 3 параметра templateId, phoneNumber и innExecutor
+
+
+    //-------------  СОЗДАНИЕ СТРУКТУРЫ СУЩНОСТЕЙ  -------------//
+    // declare MAX.DEAL_TYPE(
+    //     parent:MAX.SEND_DOCUMENTS,
+    //     id:string
+    // );
+    // @dealTypes:=new List();
+
+    declare MAX.BUSINESS_DATA(
+        ogrnExecutor:string,
+        innExecutor:string,
+        kppExecutor:string
+    );
+
+    declare MAX.MEDICAL_DATA(
+        innExecutor:string,
+        kppExecutor:string
+    );
+
+    declare MAX.SEND_DOCUMENTS(
+        //dealTypes:MAX.DEAL_TYPE[parent],
+        dealTypes: string,
+        businessData: MAX.BUSINESS_DATA,
+        medicalData: MAX.MEDICAL_DATA,
+        departmentId: string,
+        phoneNumber: string
+
+    );
+
+    // {
+    //     "dealTypes": "95966dd5-6ae1-4606-8d17-905b35a4f3a4",
+    //     "businessData": {
+    //         "ogrnExecutor": "1021603148269",
+    //         "innExecutor": "7707049388",
+    //         "kppExecutor": "7707049388"
+    //     },
+    //     "medicalData": {},
+    //     "departmentId": "b661d2dd-bfe1-4ec9-970f-89167695cd7c",
+    //     "phoneNumber": "79625775703"
+    // } 
+
+    declare MAX.DOCS_SERV_RESPONSE(
+        success: true,
+        message: string,
+        documentId: string
+    );
+
+    // {
+    //     "success": true,
+    //     "message": "string",
+    //     "documentId": "string"
+    // }
+
+    //@sectDT := new MAX.DEAL_TYPE();
+
+    @body := new MAX.SEND_DOCUMENTS();
+
+        // @sectDT := new MAX.DEAL_TYPE();
+        // @sectDT -> {id} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4";
+    @body -> {dealTypes} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4";
+
+        @sectBD := new MAX.BUSINESS_DATA();
+        @sectBD -> {ogrnExecutor}:= {.}->{CardLpu / OGRNCode};
+        @sectBD -> {innExecutor}:= {.}->{CardLpu / InnCode};
+        @sectBD -> {kppExecutor}:= {.}->{CardLpu / KppCode};
+
+    @body -> {businessData} := @sectBD;
+
+        @sectMD := new MAX.MEDICAL_DATA();
+    
+    @body -> {medicalData} := @sectMD;
+
+    @body -> {departmentId}:= "b661d2dd-bfe1-4ec9-970f-89167695cd7c";
+    @body -> {phoneNumber} := "79625775703";
+
+
+
+
+    @json := Replace(Replace(Str(@body,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
+    $throw new ClientException(@json,"Тело запроса");
+
+
+
+    @headers:= new Hashtable();
+
+    @address:="http://10.224.24.55/max_prod/hs/sign_documents";
+
+    try
+    begin()
+        @response := $Send POST Request to @address with headers @headers data @body {dealTypes}
+            ,{businessData / ogrnExecutor}
+            ,{businessData / innExecutor}
+            ,{businessData / innExecutor}
+            ,{departmentId}
+            ,{phoneNumber}
+        ;
+
+        @result:=$Expect unsafe "MAX.DOCS_SERV_RESPONSE" From @response inbody as json;
+        //////////////////////////////////////////////////////////////////////////
+
+        //--{"status":"99","error_text":"Unable to Parse JSON string: \nInvalid value. offset 0\n|COMMON_VITA/COMMON_FUNCTIONS: 637|COMMON_VITA/EVENTS_GET: 484"}
+        
+        @statusCode:= @result["Response"]->{StatusCode}; // 200 - Работает
+        @json2 := str(@result["Body"],"Json"); // весь ответ в строке в json
+
+    end
+    catch(ex)
+    begin()
+        // @err := @ex->{InnerException};
+        // while (RegExMatch("--> ", @err, "All")->Count()-1 >0 )
+        //     @err := SubString(@err,IndexOf(@err,"--> ")+4,StringLen(@err));
+
+        // @HospExamsList->{error} := SubString(@err,IndexOf(@err,":")+2,IndexOf(@err,Char(13))-IndexOf(@err,":")-2 );
+
+        // @response.StatusCode := 500;
+        // return(@HospExamsList);
+        @json2 := @ex -> {Message};
+        @err :=  @ex -> {Message};
+        //------------  Отправка сообщения
+        // @p := new Process("SendMessageClient");
+        // @p->{Parameters}["Session"] := param(USER_SESSION_ID);
+        // @p->{Parameters}["Caption"] := "Ошибка";
+        // @p->{Parameters}["Message"] := @err;
+        // @p-> Run();
+    end;
+
+
+end
