@@ -1,6 +1,6 @@
 // отправка документа через робот в МАХ. РТ (Татарстан)
-begin(body, headers, address, sectBD, sectMD, response, result, statusCode, json, json2){
-    {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode}
+begin(phone, body, headers, address, sectBD, sectMD, response, result, statusCode, json, json2, err){
+    {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{Patient / PhoneNumbersString}
 }
     // SendDocumentsRequest
 
@@ -85,14 +85,40 @@ begin(body, headers, address, sectBD, sectMD, response, result, statusCode, json
     
     @body -> {medicalData} := @sectMD;
 
+        @phone := {.}->{Patient / PhoneNumbersString};
+
     @body -> {departmentId}:= "b661d2dd-bfe1-4ec9-970f-89167695cd7c";
-    @body -> {phoneNumber} := "79625775703";
+    @body -> {phoneNumber} := @phone;//"79625775703";
+
+    if (@phone <> Null())
+    begin(mbb,mbi,str, mb, p)
+
+        @mbb := 3; // MessageBoxButtons - YesNo
+        @mbi := 8; // MessageBoxIcon
+
+        @str:= "ВНИМАНИЕ!" + Char(13) + "Этот номер телефона:" 
+            + Char(13) + @phone
+            + Char(13) + "совпадает с номером телефона в аккаунте приложения MAX?"
+            + Char(13) + Char(13) +"Да - Продолжить?"
+            + Char(13) + "Нет - Показать тело запроса и выйти?";
+        @mb := new MessageBoxInfo(@str, "Заголовок", @mbb, @mbi); // 8 - Warning
+        @p := new Process("GenerateMessageBoxOnClient", @mb);
+        @p -> Run();
+
+        if(@mb.DialogResult<>6) // попробовать while()
+        begin(str2, mb2, p2)
+            // @str2:= "Выберите «Попробовать снова»";
+            // @mb2 := new MessageBoxInfo(@str2, "ВНИМАНИЕ! Так нельзя!", 0, 7); // 7 - Error
+            // @p2 := new Process("GenerateMessageBoxOnClient", @mb2);
+            // @p2 -> Run();
+            @json := Replace(Replace(Str(@body,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
+            $throw new ClientException(@json,"Тело запроса");
+        end;
+
+    end;
 
 
 
-
-    @json := Replace(Replace(Str(@body,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
-    $throw new ClientException(@json,"Тело запроса");
 
 
 
@@ -138,6 +164,6 @@ begin(body, headers, address, sectBD, sectMD, response, result, statusCode, json
         // @p->{Parameters}["Message"] := @err;
         // @p-> Run();
     end;
-
+    $throw new ClientException(@json2,"!!!!!");
 
 end
