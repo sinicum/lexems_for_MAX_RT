@@ -7,12 +7,13 @@ begin(ticketID, url, qrTicket, resp ,status, err)
         @url := @Body -> {url};
         
         @resp := new MAX.SET_TICKET_OUT();
+        @status := 200;
 
         if (RegularExpression("^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$", @ticketID) > 0) 
         begin()
 
             @qrTicket := query top 1 {TicketID} from "AKUZ.TELECONSULTATION_TICKET"
-                            where {TicketID}=@ticketID;
+                            where {TicketID} = @ticketID;
 
             if (@qrTicket->Count()>0 )  //----- НАЙДЕНЫ ЛИ ЗАПИСИ ------//
             foreach(thisTicket in @qrTicket)
@@ -22,7 +23,7 @@ begin(ticketID, url, qrTicket, resp ,status, err)
                 @thisTicket -> Save();
                 // заполняю поля на отдачу
                 @resp -> {status} := "success";
-
+                
 
             end
             else
@@ -31,22 +32,40 @@ begin(ticketID, url, qrTicket, resp ,status, err)
                 @resp->{error} := "Не найдены записи по указанному ticketID";
             end;
 
-
-
         end else
         begin()
             @status:=206;
             @resp->{error} := "Параметр ticketID имеет неверный формат. Идентификатор GUID должен содержать 32 цифры и 4 дефиса (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).";
         end;
 
+        begin(rso)
+            @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
+            @rso -> {QueueName}:=@ticketID;  
+            @rso -> {Content} := Replace(Str(@Body,"Json"),"\"flags_\":\"1\",","");
+            @rso -> {Content} := str(@rso -> {Content} + char(13)+char(10)+char(13)+char(10));
+            @rso -> {Content} := str(@rso -> {Content} + Replace(Str(@resp,"Json"),"\"flags_\":\"1\",",""));
+            @rso -> {RoutingKey}:=@status;
+            @rso -> {Type}:="TMK_SET_TICKET_URL";
+            @rso -> {State}:=1;
+            @rso -> {ContentEncoding}:="utf-8";
+            @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
+            @rso -> Save();
+        end;
 
+        // begin(p2)
+        //     @p2 := new Process("SendMessageClient");
+        //     @p2->{Parameters}["Session"] := "0828ce2e-683a-4eab-bacb-be7a1a7359c9";
+        //     @p2->{Parameters}["Caption"] := "Hello";
+        //     @p2->{Parameters}["Message"] := Replace(Str(@Body,"Json"),"\"flags_\":\"1\",","");
+        //     if (@p2->Run()[@p2] = true) print("Message sent") else print("Message not sent");
+        // end;
 
-        @response.StatusCode := 207;
+        @response.StatusCode := @status;
         return(@resp);
     end
     catch(ex)
     begin()
-   
+
         @err := @ex->{InnerException};
         // $throw(@err);
 
@@ -61,9 +80,12 @@ begin(ticketID, url, qrTicket, resp ,status, err)
  
         @resp := new MAX.SET_TICKET_OUT();
         @resp -> {error} := @err;
-        
+
+        @status:=500; 
         @response.StatusCode := 500;
         return(@resp);
         
-    end;    
+    end;
+
+
 end
