@@ -55,9 +55,11 @@ begin(phone, body, headers, address, sectBD, sectMD, response, result, statusCod
     // } 
 
     declare MAX.DOCS_SERV_RESPONSE(
-        success: true,
-        message: string,
-        documentId: string
+        // success: true,
+        // message: string,
+        // documentId: string
+        StateCode: int,
+        ErrorDescription: string
     );
 
     // {
