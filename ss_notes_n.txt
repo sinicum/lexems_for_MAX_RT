@@ -20,6 +20,7 @@ https://vitacore.bitrix24.ru/workgroups/group/332/tasks/task/view/43886/
 найти лексему Арсения для множественного сейва
 2. лексему с выходом из цикла
 
+по ГАР ФИАС
 https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address
 https://fias-public-service.nalog.ru/api/spas/v2.0/SearchAddressItems
 
@@ -28,8 +29,12 @@ https://fias-public-service.nalog.ru/api/spas/v2.0/SearchAddressItems
 
     Заметки
 ===============
-10.02.2026 РТ. Диана. по модулю ИП ООГУЗ прикрепление с РПГУ
+10.02.2026 РТ. Диана (Любомир). по модулю ИП ООГУЗ прикрепление с РПГУ
 - не садятся некоторые поля
+- проанализировал, изучил сущности, перечитал прфили
+    - интеграторы РПГУ /
+[ПОЧТИ РЕШЕНО] - Ильнур Юсупов не читает профили ??? 
+2 часа
 
 10.02.2026 НАО. Аделя
 https://vitacore.bitrix24.ru/workgroups/group/20/tasks/task/view/68588/
