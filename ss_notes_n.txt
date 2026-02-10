@@ -48,7 +48,7 @@ https://vitacore.bitrix24.ru/workgroups/group/20/tasks/task/view/68588/
 
 10.02.2026 Интеграция с Макс. 
 [ПРОБЛЕМА] Сервис отправки доков возвращает ошибку
-
+ При выполнении лексемы $Expect unsafe "MAX.DOCS_SERV_RESPONSE" From @response inbody as json произошла ошибка ---> System.Exception: Unknown symbol on start:"￿"
 при этом работает CURL
 curl -v -k -H "Content-Type: application/json; charset=utf-8" -H "Authorization: Basic YXBpX3JlcXVlc3Q6TmZuZmhjbmZ5" -d  "{\"oid_mo\": \"1.2.643.5.1.13.13.12.2.16.1164\",\"user_snils\": \"151-575-927 78\",\"context_id\": \"1\"}" https://aist.tatar.ru/api_v1/vita/events_set
 
