@@ -1,0 +1,102 @@
+// MAX . получение ответа от сервиса АИСТ
+begin(phone, req, headers, address, sectBD, sectMD, sessionID,
+rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,err){
+    {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{Patient / PhoneNumbersString}
+}
+
+
+    declare MAX.SEND_DOCUMENTS(
+            oid_mo:string
+            ,oid_department:string
+            ,user_snils:string
+            ,patient_id:string
+            //,exam_date:string
+            //,object_id:string
+            ,context_id:string
+            //,mkb:string
+
+    );
+
+    declare MAX.DOCS_SERV_RESPONSE(
+            status:string
+            ,client_message:string
+            ,redirect_url:string
+            ,time_ms:int
+            ,error_text:string
+        );
+
+
+
+    @req := new MAX.SEND_DOCUMENTS();
+    @req -> {oid_mo}:= "1.2.643.5.1.13.13.12.2.16.1164"; //"1.2.643.5.1.13.13.12.2.66.6804";
+    @req -> {user_snils} := "151-575-927 78";//--- "155-412-747 56";
+    @req -> {context_id} := 1;
+
+
+
+    //$throw (Replace(Replace(Str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"",""));
+
+    @sessionID := "035b92d7-e5d2-4132-95e0-22dbf3efdecd";//param(USER_SESSION_ID);
+
+    /////// ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ
+    begin(p2)
+        @p2 := new Process("SendMessageClient");
+        @p2->{Parameters}["Session"] := @sessionID;
+        @p2->{Parameters}["Caption"] := "Hello";
+        @p2->{Parameters}["Message"] := "!!!!!!!!!";//@json2;
+        @p2->Run()[@p2];
+    end;
+    
+
+
+    @headers:= new Hashtable();
+    @headers["Authorization"]:="Basic YXBpX3JlcXVlc3Q6TmZuZmhjbmZ5";
+
+    @address:="https://aist.tatar.ru/api_v1/vita/events_set"; // с сервера
+
+    @json:=str(@req,"Json");
+    // $throw(Str(@json));
+
+    @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
+    @rso -> {QueueName}:=@address;
+    @rso -> {Content}:=@json;
+    @rso -> {RoutingKey}:="";
+    @rso -> {Type}:="MAX_TEST_REQUEST";
+    @rso -> {State}:=1;
+    @rso -> {ContentEncoding}:="utf-8";
+    @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
+    @rso -> Save();
+    
+
+        @response := $Send POST Request to @address with headers @headers data @req {oid_mo}
+            ,{oid_department}
+            ,{user_snils}
+            ,{patient_id}
+            //,{mkb}
+            ,{context_id};
+
+        @result:=$Expect unsafe "MAX.DOCS_SERV_RESPONSE" From @response inbody as json; 
+
+
+        
+        @statusCode:= @result["Response"]->{StatusCode}; // 200 - Работает
+        @json2 := str(@result["Body"],"Json"); // весь ответ в строке в json
+
+        @status := @result["Body"] -> {status};
+        @error_text := @result["Body"] -> {error_text};
+
+        @url := @result["Body"] -> {redirect_url};
+
+
+
+    @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
+    @rso -> {QueueName}:=IsNull(@url,"");
+    @rso -> {Content}:=@json2;
+    @rso -> {RoutingKey}:="";
+    @rso -> {Type}:="MAX_TEST_RESPONSE";
+    @rso -> {State}:=1;
+    @rso -> {ContentEncoding}:="utf-8";
+    @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
+    @rso -> Save();
+
+end
