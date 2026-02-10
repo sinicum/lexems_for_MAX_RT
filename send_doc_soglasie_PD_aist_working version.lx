@@ -38,17 +38,6 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
 
 
     //$throw (Replace(Replace(Str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"",""));
-
-    // @sessionID := "035b92d7-e5d2-4132-95e0-22dbf3efdecd";//param(USER_SESSION_ID);
-
-    // /////// ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ
-    // begin(p2)
-    //     @p2 := new Process("SendMessageClient");
-    //     @p2->{Parameters}["Session"] := @sessionID;
-    //     @p2->{Parameters}["Caption"] := "Hello";
-    //     @p2->{Parameters}["Message"] := "!!!!!!!!!";//@json2;
-    //     @p2->Run()[@p2];
-    // end;
     
     // curl -v -H "Content-Type: application/json; charset=utf-8"  -d  "{\"oid_mo\": \"1.2.643.5.1.13.13.12.2.16.1164\",\"user_snils\": \"151-575-927 78\",\"context_id\": \"1\"}" https://aist.tatar.ru/api_v1/vita/events_set
     // {
@@ -63,6 +52,7 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
 
     @headers:= new Hashtable();
     @headers["Authorization"]:="Basic YXBpX3JlcXVlc3Q6TmZuZmhjbmZ5";
+    @headers["Content-Type"]:="application/json";
 
     @address:="https://aist.tatar.ru/api_v1/vita/events_set"; // с сервера
 
@@ -87,11 +77,25 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
             //,{mkb}
             ,{context_id};
 
+            // 
+            // @request := @rro -> {Reply};
+            // @response:=$Send POST Request to @address with headers @headers data @request {some_random_stuff_for_syntax_needs};
+
         @result:=$Expect unsafe "MAX.DOCS_SERV_RESPONSE" From @response inbody as json;
 
-            // попробуем посадить ответ в текст
+            // ПРИМЕР посадить ответ в текст
             //@result:=$Expect unsafe "string" From @response inbody;
             //@str:=@result["Response"]->{Body};	
+
+            // ПРИМЕР посадить ответ в XML
+            // @result:=$Expect safe "HP.Response" From @response inbody as xml;
+            // if(@result["Body"]->{udata/response/data/is_success} = 0 and @result["Body"] -> {udata/response/data/message} <> Null())
+            // begin()
+            //     @err:= @result["Body"]->{udata/response/data/message};
+            // end
+            // else begin()
+            //     @err:= "Код ошибки: " + Cast(@result["Body"]->{udata/response/code}, "String");
+            // end;
 
 
         
