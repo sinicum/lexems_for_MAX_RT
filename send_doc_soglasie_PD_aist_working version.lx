@@ -5,6 +5,7 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
 }
 
 
+
     declare MAX.SEND_DOCUMENTS(
             oid_mo:string
             ,oid_department:string
@@ -16,6 +17,8 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
             //,mkb:string
 
     );
+
+
 
     declare MAX.DOCS_SERV_RESPONSE(
             status:string
@@ -36,25 +39,34 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
 
     //$throw (Replace(Replace(Str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"",""));
 
-    @sessionID := "035b92d7-e5d2-4132-95e0-22dbf3efdecd";//param(USER_SESSION_ID);
+    // @sessionID := "035b92d7-e5d2-4132-95e0-22dbf3efdecd";//param(USER_SESSION_ID);
 
-    /////// ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ
-    begin(p2)
-        @p2 := new Process("SendMessageClient");
-        @p2->{Parameters}["Session"] := @sessionID;
-        @p2->{Parameters}["Caption"] := "Hello";
-        @p2->{Parameters}["Message"] := "!!!!!!!!!";//@json2;
-        @p2->Run()[@p2];
-    end;
+    // /////// ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ
+    // begin(p2)
+    //     @p2 := new Process("SendMessageClient");
+    //     @p2->{Parameters}["Session"] := @sessionID;
+    //     @p2->{Parameters}["Caption"] := "Hello";
+    //     @p2->{Parameters}["Message"] := "!!!!!!!!!";//@json2;
+    //     @p2->Run()[@p2];
+    // end;
     
-
+    // curl -v -H "Content-Type: application/json; charset=utf-8"  -d  "{\"oid_mo\": \"1.2.643.5.1.13.13.12.2.16.1164\",\"user_snils\": \"151-575-927 78\",\"context_id\": \"1\"}" https://aist.tatar.ru/api_v1/vita/events_set
+    // {
+    //     "oid_mo": "1.2.643.5.1.13.13.12.2.16.1164",
+    //     "user_snils": "151-575-927 78",
+    //     "context_id": "1"
+    // }
+    // {
+    //     "status": "99",
+    //     "error_text": "Не найдено отделение с OID:. Для устранения проблемы необходимо наличие в АИСТ РАМ соответствующего отделеня с OID -|COMMON_VITA/CHECK_ORGS: 277|COMMON_VITA/COMMON_FUNCTIONS: 643|COMMON_VITA/EVENTS_SET: 227"
+    // }
 
     @headers:= new Hashtable();
     @headers["Authorization"]:="Basic YXBpX3JlcXVlc3Q6TmZuZmhjbmZ5";
 
     @address:="https://aist.tatar.ru/api_v1/vita/events_set"; // с сервера
 
-    @json:=str(@req,"Json");
+    @json:=Replace(Replace(str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","");
     // $throw(Str(@json));
 
     @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
@@ -75,7 +87,11 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
             //,{mkb}
             ,{context_id};
 
-        @result:=$Expect unsafe "MAX.DOCS_SERV_RESPONSE" From @response inbody as json; 
+        @result:=$Expect unsafe "MAX.DOCS_SERV_RESPONSE" From @response inbody as json;
+
+            // попробуем посадить ответ в текст
+            //@result:=$Expect unsafe "string" From @response inbody;
+            //@str:=@result["Response"]->{Body};	
 
 
         
