@@ -45,7 +45,7 @@ begin(ticketID, url, qrTicket, resp ,status, err)
             @rso -> {Content} := str(@rso -> {Content} + char(13)+char(10)+char(13)+char(10));
             @rso -> {Content} := str(@rso -> {Content} + Replace(Str(@resp,"Json"),"\"flags_\":\"1\",",""));
             @rso -> {RoutingKey}:=@status;
-            @rso -> {Type}:="TMK_SET_TICKET_URL";
+            @rso -> {Type}:="MAX_SET_TMK_TICKET_URL";
             @rso -> {State}:=1;
             @rso -> {ContentEncoding}:="utf-8";
             @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
