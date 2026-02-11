@@ -71,13 +71,13 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                 //     "entries": [
                 //         {
                 //             "ticketID": "uuid",
+                //             "dateTime": "dd-MM-yyyy HH:mm",
                 //             "branchName": "string",
                 //             "moName": "string",
                 //             "resourceName": "Фамилия Имя Отчество",
                 //             "speciality": "Специальность",
                 //             "docPhone" : "7ХХХХХХХХХ",   // 11 цифр, начиная с «7»
                 //             "patientFIO": "Фамилия Имя Отчество",
-                //             "dateTime": "dd-MM-yyyy HH:mm",
                 //             "patPhone": "+7(999)888-88-77"
                 //         }
                 //     ]
@@ -99,6 +99,7 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                                         );
                     @Entry->{speciality} := @thisEntry->{Resource / Speciality / Name};
 
+                    // подзапрос Номера телефона врача. поле Id2FA из LOGIN
                     @resID := @thisEntry-> {Resource / ResourceID};
                     @docPhone := select top 1 {Id2FA} from "VCLib.LOGIN" 
                                  where {Id2FA} <> Null() 
@@ -115,7 +116,7 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                     //@Entry->{Resource} := @thisEntry->{Resource / As AKUZ.POST / DisplayName};
                     // @Entry->{place} := @thisEntry->{Place};
                                        
-
+                    // подзапрос Номера телефона пациента. последний изменённый с типом "мобильный"
                     @patID := @thisEntry ->{AmbulanceEvent / AmbulanceCard / Patient / PatientID};
                     @patPhone := select top 1 {Number} from "AKUZ.PHONE_NUMBER"
                                 where {Patient / PatientID} = @patID
