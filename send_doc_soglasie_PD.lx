@@ -77,7 +77,7 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
 
         // @sectDT := new MAX.DEAL_TYPE();
         // @sectDT -> {id} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4";
-    @req -> {dealTypes} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4";
+    @req -> {dealTypes} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4"; // Согласие на обработку ПД
 
         @sectBD := new MAX.BUSINESS_DATA();
         @sectBD -> {ogrnExecutor}:= {.}->{CardLpu / OGRNCode};
@@ -127,16 +127,16 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
 
     // $throw (Replace(Replace(Str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"",""));
 
-    @sessionID := "035b92d7-e5d2-4132-95e0-22dbf3efdecd";//param(USER_SESSION_ID);
+    // @sessionID := "035b92d7-e5d2-4132-95e0-22dbf3efdecd";//param(USER_SESSION_ID);
 
-    /////// ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ
-    begin(p2)
-        @p2 := new Process("SendMessageClient");
-        @p2->{Parameters}["Session"] := @sessionID;
-        @p2->{Parameters}["Caption"] := "Hello";
-        @p2->{Parameters}["Message"] := "!!!!!!!!!";//@json2;
-        @p2->Run()[@p2];
-    end;
+    // /////// ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ
+    // begin(p2)
+    //     @p2 := new Process("SendMessageClient");
+    //     @p2->{Parameters}["Session"] := @sessionID;
+    //     @p2->{Parameters}["Caption"] := "Hello";
+    //     @p2->{Parameters}["Message"] := "!!!!!!!!!";//@json2;
+    //     @p2->Run()[@p2];
+    // end;
     
 
     /// --------------- CURL 1 / // ГКБ7
@@ -176,10 +176,10 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
     @headers["Authorization"] := "Basic 0JDQtNC80LjQvdC40YHRgtGA0LDRgtC+0YA6";
     @headers["Content-Type"]:="application/json";
 
-    @address:="http://10.224.24.55/max_prod_gk/hs/sign_documents"; // с сервера
-    // @address:="http://10.224.105.150:3000/max_prod_gk/hs/sign_documents"; // с клиента
+    @address:="http://10.224.24.55/max_prod_gk/hs/sign_documents/sendDocumetns"; // с сервера
+    // @address:="http://10.224.105.150:3000/max_prod_gk/hs/sign_documents/sendDocumetns"; // с клиента
     
-    @json:=Replace(str(@req,"Json"),"\"flags_\":\"1\",","");
+    @json:=Replace(Replace(str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","");
     // $throw(Str(@json));
 
     @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
@@ -204,17 +204,19 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
 
         @result:=$Expect unsafe "MAX.DOCS_SERV_RESPONSE" From @response inbody as json;
         //////////////////////////////////////////////////////////////////////////
-
+            // ПРИМЕР посадить ответ в текст
+            // @result:=$Expect unsafe "string" From @response inbody;
+            // @json2:=@result["Response"]->{Body};	
 
         
         @statusCode:= @result["Response"]->{StatusCode}; // 200 - Работает
-        @json2 := str(@result["Body"],"Json"); // весь ответ в строке в json
+        //@json2 := str(@result["Body"],"Json"); // весь ответ в строке в json
 
 
     @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
     @rso -> {QueueName}:=IsNull(@url,"");
     @rso -> {Content}:=@json2;
-    @rso -> {RoutingKey}:="";
+    @rso -> {RoutingKey}:=@statusCode;
     @rso -> {Type}:="MAX_SEND_DOC_RESPONSE";
     @rso -> {State}:=1;
     @rso -> {ContentEncoding}:="utf-8";
