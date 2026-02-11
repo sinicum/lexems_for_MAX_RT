@@ -1,6 +1,6 @@
 // MAX . получение ответа от сервиса АИСТ
 begin(phone, req, headers, address, sectBD, sectMD, sessionID,
-rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,err){
+rso,headers,address,request,response,result,statusCode,status,error_text,url,json,json2,err){
     {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{Patient / PhoneNumbersString}
 }
 
@@ -70,22 +70,22 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
     @rso -> Save();
     
 
-        @response := $Send POST Request to @address with headers @headers data @req {oid_mo}
-            ,{oid_department}
-            ,{user_snils}
-            ,{patient_id}
-            //,{mkb}
-            ,{context_id};
+        // @response := $Send POST Request to @address with headers @headers data @req {oid_mo}
+        //     ,{oid_department}
+        //     ,{user_snils}
+        //     ,{patient_id}
+        //     //,{mkb}
+        //     ,{context_id};
 
             // 
-            // @request := @rro -> {Reply};
-            // @response:=$Send POST Request to @address with headers @headers data @request {some_random_stuff_for_syntax_needs};
+            @request := @json;
+            @response:=$Send POST Request to @address with headers @headers data @request {some_random_stuff_for_syntax_needs};
 
-        @result:=$Expect unsafe "MAX.DOCS_SERV_RESPONSE" From @response inbody as json;
+        //@result:=$Expect unsafe "MAX.DOCS_SERV_RESPONSE" From @response inbody as json;
 
             // ПРИМЕР посадить ответ в текст
-            //@result:=$Expect unsafe "string" From @response inbody;
-            //@str:=@result["Response"]->{Body};	
+            @result:=$Expect unsafe "string" From @response inbody;
+            @json2:=@result["Response"]->{Body};	
 
             // ПРИМЕР посадить ответ в XML
             // @result:=$Expect safe "HP.Response" From @response inbody as xml;
@@ -100,12 +100,12 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
 
         
         @statusCode:= @result["Response"]->{StatusCode}; // 200 - Работает
-        @json2 := str(@result["Body"],"Json"); // весь ответ в строке в json
+        //@json2 := str(@result["Body"],"Json"); // весь ответ в строке в json
 
-        @status := @result["Body"] -> {status};
-        @error_text := @result["Body"] -> {error_text};
+        // @status := @result["Body"] -> {status};
+        // @error_text := @result["Body"] -> {error_text};
 
-        @url := @result["Body"] -> {redirect_url};
+        // @url := @result["Body"] -> {redirect_url};
 
 
 
