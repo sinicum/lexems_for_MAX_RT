@@ -1,0 +1,110 @@
+begin(rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,err)
+    ////////////   СЕРВЕРНАЯ ЧАСТЬ   ////////////
+
+    /// --------------- CURL 1 / // ГКБ7
+    // curl -v -H "Content-Type: application/json; charset=utf-8" -H "Authorization: Basic 0JDQtNC80LjQvdC40YHRgtGA0LDRgtC+0YA6" -d "{\"dealTypes\": \"95966dd5-6ae1-4606-8d17-905b35a4f3a4\",\"businessData\": {\"ogrnExecutor\": \"1021603148269\",\"innExecutor\": \"1658012247\",\"kppExecutor\": \"165701001\"},\"medicalData\": {},\"departmentId\": \"b661d2dd-bfe1-4ec9-970f-89167695cd7c\",\"phoneNumber\": \"79625775703\"}" http://10.224.105.150:3000/max_prod_gk/hs/sign_documents/sendDocumetns
+    // http://10.224.105.150:3000
+    // {
+    //     "dealTypes": "95966dd5-6ae1-4606-8d17-905b35a4f3a4",
+    //     "businessData": {                        
+    //         "ogrnExecutor": "1021603148269",
+    //         "innExecutor": "1658012247",
+    //         "kppExecutor": "165701001"
+    //     },
+    //     "medicalData": {},
+    //     "departmentId": "b661d2dd-bfe1-4ec9-970f-89167695cd7c",
+    //     "phoneNumber": "79625775703"         // Всеволод
+    // }
+
+    ////----- curl 2 / Отловлен в теле запроса / СПАСЕНИЕ
+    // curl -v -H "Content-Type: application/json; charset=utf-8" -H "Authorization: Basic 0JDQtNC80LjQvdC40YHRgtGA0LDRgtC+0YA6" -d "{\"dealTypes\": \"95966dd5-6ae1-4606-8d17-905b35a4f3a4\",\"businessData\": {\"ogrnExecutor\": \"1121690035532\",\"innExecutor\": \"1659120340\",\"kppExecutor\": \"165901001\"},\"medicalData\": {},\"departmentId\": \"b661d2dd-bfe1-4ec9-970f-89167695cd7c\",\"phoneNumber\": \"79625775703\"}" http://10.224.24.55/max_prod_gk/hs/sign_documents/sendDocumetns
+    // http://10.224.24.55
+    // {
+    //     "dealTypes": "95966dd5-6ae1-4606-8d17-905b35a4f3a4",
+    //     "businessData": {
+    //         "ogrnExecutor": "1121690035532",
+    //         "innExecutor": "1659120340",
+    //         "kppExecutor": "165901001"
+    //     },
+    //     "medicalData": {},
+    //     "departmentId": "b661d2dd-bfe1-4ec9-970f-89167695cd7c",
+    //     "phoneNumber": "79625775703"
+    // }
+
+
+
+    @headers:= new Hashtable();
+    @headers["Authorization"] := "Basic 0JDQtNC80LjQvdC40YHRgtGA0LDRgtC+0YA6";
+    @headers["Content-Type"]:="application/json";
+
+    @address:="http://10.224.24.55/max_prod_gk/hs/sign_documents/sendDocumetns"; // с сервера
+    // @address:="http://10.224.105.150:3000/max_prod_gk/hs/sign_documents/sendDocumetns"; // с клиента
+    
+    @json:=Replace(Replace(str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","");
+    // $throw(Str(@json));
+
+    @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
+    @rso -> {QueueName}:=@address;
+    @rso -> {Content}:=@json;
+    @rso -> {RoutingKey}:="";
+    @rso -> {Type}:="MAX_SEND_DOC_REQUEST";
+    @rso -> {State}:=1;
+    @rso -> {ContentEncoding}:="utf-8";
+    @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
+    @rso -> Save();
+
+
+
+    // try
+    // begin()
+        @response := $Send POST Request to @address with headers @headers data @req {dealTypes}
+            ,{businessData / ogrnExecutor}
+            ,{businessData / innExecutor}
+            ,{businessData / innExecutor}
+            ,{departmentId}
+            ,{phoneNumber}
+        ;
+
+        @result:=$Expect unsafe "MAX.DOCS_SERV_RESPONSE" From @response inbody as json;
+        //////////////////////////////////////////////////////////////////////////
+            // ПРИМЕР посадить ответ в текст
+            // @result:=$Expect unsafe "string" From @response inbody;
+            // @json2:=@result["Response"]->{Body};	
+
+        
+        @statusCode:= @result["Response"]->{StatusCode}; // 200 - Работает
+        //@json2 := str(@result["Body"],"Json"); // весь ответ в строке в json
+
+
+    @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
+    @rso -> {QueueName}:=IsNull(@url,"");
+    @rso -> {Content}:=@json2;
+    @rso -> {RoutingKey}:=@statusCode;
+    @rso -> {Type}:="MAX_SEND_DOC_RESPONSE";
+    @rso -> {State}:=1;
+    @rso -> {ContentEncoding}:="utf-8";
+    @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
+    @rso -> Save();
+    // end
+    // catch(ex)
+    // begin()
+    //     // @err := @ex->{InnerException};
+    //     // while (RegExMatch("--> ", @err, "All")->Count()-1 >0 )
+    //     //     @err := SubString(@err,IndexOf(@err,"--> ")+4,StringLen(@err));
+
+    //     // @HospExamsList->{error} := SubString(@err,IndexOf(@err,":")+2,IndexOf(@err,Char(13))-IndexOf(@err,":")-2 );
+
+    //     // @response.StatusCode := 500;
+    //     // return(@HospExamsList);
+    //     @json2 := Str( @ex -> {InnerException});
+    //     @err :=  @ex -> {Message};
+    //     //------------  Отправка сообщения
+    //     // @p := new Process("SendMessageClient");
+    //     // @p->{Parameters}["Session"] := param(USER_SESSION_ID);
+    //     // @p->{Parameters}["Caption"] := "Ошибка";
+    //     // @p->{Parameters}["Message"] := @err;
+    //     // @p-> Run();
+    // end;
+    // $throw new ClientException(@json2,"!!!!!");
+
+end
