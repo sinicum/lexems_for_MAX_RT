@@ -42,21 +42,21 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                                         //,{ObjectProperties / ObjectType / EntDesc}
                                         //,{Place}
                                         ,{Resource / ResourceID}
-                                        ,{Resource / As AKUZ.POST / Worker / FIO}
+                                        //,{Resource / As AKUZ.POST / Worker / FIO}
                                         ,{Resource / As AKUZ.POST / Worker / FirstName}
                                         ,{Resource / As AKUZ.POST / Worker / LastName}
                                         ,{Resource / As AKUZ.POST / Worker / FatherName}
-                                        ,{Resource / As AKUZ.ROOM / Name}
+                                        //,{Resource / As AKUZ.ROOM / Name}
                                         ,{Resource / Speciality / Name}
                                         ,{Resource / Division / Branch / Name}
                                         ,{Resource / Division / Branch / LpuMain / Name}
                                         ,{AmbulanceEvent / AmbulanceCard / Patient / PatientID}
                                         ,{AmbulanceEvent / AmbulanceCard / Patient / cFIO}
                                         //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString}
-                                        ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Number}
-                                        ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / PhoneType}
+                                        //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Number}
+                                        //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / PhoneType}
                                         //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / xCleanNumber}
-                                        ,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Comment}
+                                        //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Comment}
                             from "AKUZ.ENTRY_AMBULANCE" 
                             where {Ticket / TicketTime}>=  param(CURRENT_DATE)
                                 and {Resource / Division / Branch / LpuMain / LpuID} <> @excludeMO
