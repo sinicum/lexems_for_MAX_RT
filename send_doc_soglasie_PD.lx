@@ -1,27 +1,32 @@
 // отправка документа через робот в МАХ. РТ (Татарстан)
-begin(phone, req, headers, address, sectBD, sectMD, sessionID,
-rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,err){
-    {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{Patient / PhoneNumbersString}
+begin(phone, req, sectBD, sectMD, sessionID,
+er){
+    {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{Patient / PatientID}
 }
-    // SendDocumentsRequest
-
+    //---------- заметки из Swagger.YAML описания /SendDocumentsRequest
     //   required:
     //     - dealTypes      array
     //     - businessData   object
     //     - departmentId   string
     //     - phoneNumber    string
-
     //     - medicalData
-    // - Константин: по факту, будем ждать только 3 параметра templateId, phoneNumber и innExecutor
 
+    // *   (устар.) Константин: по факту, будем ждать только 3 параметра templateId, phoneNumber и innExecutor
+
+    // ------------- структура тела запроса в JSON -------------
+    // {
+    //     "dealTypes": "95966dd5-6ae1-4606-8d17-905b35a4f3a4",
+    //     "businessData": {
+    //         "ogrnExecutor": "1021603148269",
+    //         "innExecutor": "7707049388",
+    //         "kppExecutor": "7707049388"
+    //     },
+    //     "medicalData": {},
+    //     "oidMOinMIS": "b661d2dd-bfe1-4ec9-970f-89167695cd7c",
+    //     "phoneNumber": "79625775703"
+    // } 
 
     //-------------  СОЗДАНИЕ СТРУКТУРЫ СУЩНОСТЕЙ  -------------//
-    // declare MAX.DEAL_TYPE(
-    //     parent:MAX.SEND_DOCUMENTS,
-    //     id:string
-    // );
-    // @dealTypes:=new List();
-
     declare MAX.BUSINESS_DATA(
         ogrnExecutor:string,
         innExecutor:string,
@@ -38,46 +43,34 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
         dealTypes: string,
         businessData: MAX.BUSINESS_DATA,
         medicalData: MAX.MEDICAL_DATA,
-        departmentId: string,
+        oidMOinMIS: string,
         phoneNumber: string
 
     );
 
-    // ------------- структура тела запроса в JSON -------------
+    // ------------- структура тела ответа в JSON -------------
+    // успешный запрос/ответ:
     // {
-    //     "dealTypes": "95966dd5-6ae1-4606-8d17-905b35a4f3a4",
-    //     "businessData": {
-    //         "ogrnExecutor": "1021603148269",
-    //         "innExecutor": "7707049388",
-    //         "kppExecutor": "7707049388"
-    //     },
-    //     "medicalData": {},
-    //     "departmentId": "b661d2dd-bfe1-4ec9-970f-89167695cd7c",
-    //     "phoneNumber": "79625775703"
-    // } 
-
-    declare MAX.DOCS_SERV_RESPONSE(
-        // success: true,
-        // message: string,
-        // documentId: string
-        transactionId: strinig,
-        StateCode: int,
-        ErrorDescription: string
-    );
-
+    //   "transactionId": "da84baea-7d61-4f18-a05f-976dfeee15f3"
+    // }
+    // ели у них ошибка:
     // {
-    //     "success": true,
-    //     "message": "string",
-    //     "documentId": "string"
+    //   "StateCode": 400,
+    //   "ErrorDescription": "{\"error\":\"USER_NOT_FOUND\"}\n"
     // }
 
-    //@sectDT := new MAX.DEAL_TYPE();
+    declare MAX.DOCS_SERV_RESPONSE(
+        transactionId: strinig, 
 
+        StateCode: int,             // 400,
+        ErrorDescription: string    // "{\"error\":\"USER_NOT_FOUND\"}\n"
+    );
+
+
+    //---------- ЗАПОЛНЕНИЕ ТСРУКТУРЫ ЗАПРОСА --------------
     @req := new MAX.SEND_DOCUMENTS();
 
-        // @sectDT := new MAX.DEAL_TYPE();
-        // @sectDT -> {id} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4";
-    @req -> {dealTypes} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4"; // Согласие на обработку ПД
+    @req -> {dealTypes} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4"; // Согласие на обработку ПД 
 
         @sectBD := new MAX.BUSINESS_DATA();
         @sectBD -> {ogrnExecutor}:= {.}->{CardLpu / OGRNCode};
@@ -90,158 +83,67 @@ rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,
     
     @req -> {medicalData} := @sectMD;
     
-    @phone := "79625775703"; // телефон Всеволода
+    // подзапрос Номера телефона пациента. последний изменённый с типом "мобильный"
+    @patID := {.} ->{Patient / PatientID};
+    @phone := select top 1 {Number} from "AKUZ.PHONE_NUMBER"
+                where {Patient / PatientID} = @patID
+                    And {Number} <> Null()
+                    And {PhoneType} = 3
+                order by {AddedDate} desc;
+    if (@phone -> Count() > 0)
+        @req->{phoneNumber} := @phone[0][0]; 
+    //@phone := "79625775703"; // телефон Всеволода
     //@phone := "79172367682"; // мой
-    //@phone := {.}->{Patient / PhoneNumbersString};
 
     @req -> {departmentId}:= "b661d2dd-bfe1-4ec9-970f-89167695cd7c";
     @req -> {phoneNumber} := @phone;//"79625775703";
 
-    // if (@phone <> Null())
-    // begin(mbb,mbi,str, mb, p)
 
-    //     @mbb := 3; // MessageBoxButtons - YesNo
-    //     @mbi := 8; // MessageBoxIcon
+    
+    if (@phone <> Null())
+    begin(mbb,mbi,str, mb, p)
 
-    //     @str:= "ВНИМАНИЕ!" + Char(13) + "Этот номер телефона:" 
-    //         + Char(13) + @phone
-    //         + Char(13) + "совпадает с номером телефона в аккаунте приложения MAX?"
-    //         + Char(13) + Char(13) +"Да - Продолжить?"
-    //         + Char(13) + "Нет - Показать тело запроса и выйти?";
-    //     @mb := new MessageBoxInfo(@str, "Заголовок", @mbb, @mbi); // 8 - Warning
-    //     @p := new Process("GenerateMessageBoxOnClient", @mb);
-    //     @p -> Run();
+        @mbb := 3; // MessageBoxButtons - YesNo
+        @mbi := 8; // MessageBoxIcon
 
-    //     if(@mb.DialogResult<>6) 
-    //     begin(str2, mb2, p2)
-    //         // @str2:= "Выберите «Попробовать снова»";
-    //         // @mb2 := new MessageBoxInfo(@str2, "ВНИМАНИЕ! Так нельзя!", 0, 7); // 7 - Error
-    //         // @p2 := new Process("GenerateMessageBoxOnClient", @mb2);
-    //         // @p2 -> Run();
-    //         @json := Replace(Replace(Str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
-    //         $throw new ClientException(@json,"Тело запроса");
-    //         return();
-    //     end;
+        @str:= "ВНИМАНИЕ!" + Char(13) + "Этот номер телефона:" 
+            + Char(13) + @phone
+            + Char(13) + "совпадает с номером телефона в аккаунте приложения MAX?"
+            + Char(13) + Char(13) +"Да - Продолжить?"
+            + Char(13) + "Нет - Показать тело запроса и выйти?";
+        @mb := new MessageBoxInfo(@str, "Заголовок", @mbb, @mbi); // 8 - Warning
+        @p := new Process("GenerateMessageBoxOnClient", @mb);
+        @p -> Run();
 
-    // end;
+        if(@mb.DialogResult<>6) 
+        begin(str2, mb2, p2)
+            // @str2:= "Выберите «Попробовать снова»";
+            // @mb2 := new MessageBoxInfo(@str2, "ВНИМАНИЕ! Так нельзя!", 0, 7); // 7 - Error
+            // @p2 := new Process("GenerateMessageBoxOnClient", @mb2);
+            // @p2 -> Run();
+            @json := Replace(Replace(Str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
+            $throw new ClientException(@json,"Тело запроса");
+            return();
+        end;
+
+    end;
 
     // $throw (Replace(Replace(Str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"",""));
 
-    // @sessionID := "035b92d7-e5d2-4132-95e0-22dbf3efdecd";//param(USER_SESSION_ID);
 
-    // /////// ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ
-    // begin(p2)
-    //     @p2 := new Process("SendMessageClient");
-    //     @p2->{Parameters}["Session"] := @sessionID;
-    //     @p2->{Parameters}["Caption"] := "Hello";
-    //     @p2->{Parameters}["Message"] := "!!!!!!!!!";//@json2;
-    //     @p2->Run()[@p2];
+    /////// ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ
+    // begin(p, sessionID)
+    //     @sessionID := param(USER_SESSION_ID);
+    //     @p := new Process("SendMessageClient");
+    //     @p->{Parameters}["Session"] := @sessionID;
+    //     @p->{Parameters}["Caption"] := "Hello";
+    //     @p->{Parameters}["Message"] := Replace(Replace(Str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","");//@json2;
+    //     @p->Run()[@p];
     // end;
     
-
-    /// --------------- CURL 1 / // ГКБ7
-    // curl -v -H "Content-Type: application/json; charset=utf-8" -H "Authorization: Basic 0JDQtNC80LjQvdC40YHRgtGA0LDRgtC+0YA6" -d "{\"dealTypes\": \"95966dd5-6ae1-4606-8d17-905b35a4f3a4\",\"businessData\": {\"ogrnExecutor\": \"1021603148269\",\"innExecutor\": \"1658012247\",\"kppExecutor\": \"165701001\"},\"medicalData\": {},\"departmentId\": \"b661d2dd-bfe1-4ec9-970f-89167695cd7c\",\"phoneNumber\": \"79625775703\"}" http://10.224.105.150:3000/max_prod_gk/hs/sign_documents/sendDocumetns
-    // http://10.224.105.150:3000
-    // {
-    //     "dealTypes": "95966dd5-6ae1-4606-8d17-905b35a4f3a4",
-    //     "businessData": {                        
-    //         "ogrnExecutor": "1021603148269",
-    //         "innExecutor": "1658012247",
-    //         "kppExecutor": "165701001"
-    //     },
-    //     "medicalData": {},
-    //     "departmentId": "b661d2dd-bfe1-4ec9-970f-89167695cd7c",
-    //     "phoneNumber": "79625775703"         // Всеволод
-    // }
-
-    ////----- curl 2 / Отловлен в теле запроса / СПАСЕНИЕ
-    // curl -v -H "Content-Type: application/json; charset=utf-8" -H "Authorization: Basic 0JDQtNC80LjQvdC40YHRgtGA0LDRgtC+0YA6" -d "{\"dealTypes\": \"95966dd5-6ae1-4606-8d17-905b35a4f3a4\",\"businessData\": {\"ogrnExecutor\": \"1121690035532\",\"innExecutor\": \"1659120340\",\"kppExecutor\": \"165901001\"},\"medicalData\": {},\"departmentId\": \"b661d2dd-bfe1-4ec9-970f-89167695cd7c\",\"phoneNumber\": \"79625775703\"}" http://10.224.24.55/max_prod_gk/hs/sign_documents/sendDocumetns
-    // http://10.224.24.55
-    // {
-    //     "dealTypes": "95966dd5-6ae1-4606-8d17-905b35a4f3a4",
-    //     "businessData": {
-    //         "ogrnExecutor": "1121690035532",
-    //         "innExecutor": "1659120340",
-    //         "kppExecutor": "165901001"
-    //     },
-    //     "medicalData": {},
-    //     "departmentId": "b661d2dd-bfe1-4ec9-970f-89167695cd7c",
-    //     "phoneNumber": "79625775703"
-    // }
-
+    @p := new Process("GetExam_from_AIST",@obj);
+    @po := @p -> Run();
 
     ////////////   СЕРВЕРНАЯ ЧАСТЬ   ////////////
 
-    @headers:= new Hashtable();
-    @headers["Authorization"] := "Basic 0JDQtNC80LjQvdC40YHRgtGA0LDRgtC+0YA6";
-    @headers["Content-Type"]:="application/json";
-
-    @address:="http://10.224.24.55/max_prod_gk/hs/sign_documents/sendDocumetns"; // с сервера
-    // @address:="http://10.224.105.150:3000/max_prod_gk/hs/sign_documents/sendDocumetns"; // с клиента
-    
-    @json:=Replace(Replace(str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","");
-    // $throw(Str(@json));
-
-    @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
-    @rso -> {QueueName}:=@address;
-    @rso -> {Content}:=@json;
-    @rso -> {RoutingKey}:="";
-    @rso -> {Type}:="MAX_SEND_DOC_REQUEST";
-    @rso -> {State}:=1;
-    @rso -> {ContentEncoding}:="utf-8";
-    @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
-    @rso -> Save();
-
-    // try
-    // begin()
-        @response := $Send POST Request to @address with headers @headers data @req {dealTypes}
-            ,{businessData / ogrnExecutor}
-            ,{businessData / innExecutor}
-            ,{businessData / innExecutor}
-            ,{departmentId}
-            ,{phoneNumber}
-        ;
-
-        @result:=$Expect unsafe "MAX.DOCS_SERV_RESPONSE" From @response inbody as json;
-        //////////////////////////////////////////////////////////////////////////
-            // ПРИМЕР посадить ответ в текст
-            // @result:=$Expect unsafe "string" From @response inbody;
-            // @json2:=@result["Response"]->{Body};	
-
-        
-        @statusCode:= @result["Response"]->{StatusCode}; // 200 - Работает
-        //@json2 := str(@result["Body"],"Json"); // весь ответ в строке в json
-
-
-    @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
-    @rso -> {QueueName}:=IsNull(@url,"");
-    @rso -> {Content}:=@json2;
-    @rso -> {RoutingKey}:=@statusCode;
-    @rso -> {Type}:="MAX_SEND_DOC_RESPONSE";
-    @rso -> {State}:=1;
-    @rso -> {ContentEncoding}:="utf-8";
-    @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
-    @rso -> Save();
-    // end
-    // catch(ex)
-    // begin()
-    //     // @err := @ex->{InnerException};
-    //     // while (RegExMatch("--> ", @err, "All")->Count()-1 >0 )
-    //     //     @err := SubString(@err,IndexOf(@err,"--> ")+4,StringLen(@err));
-
-    //     // @HospExamsList->{error} := SubString(@err,IndexOf(@err,":")+2,IndexOf(@err,Char(13))-IndexOf(@err,":")-2 );
-
-    //     // @response.StatusCode := 500;
-    //     // return(@HospExamsList);
-    //     @json2 := Str( @ex -> {InnerException});
-    //     @err :=  @ex -> {Message};
-    //     //------------  Отправка сообщения
-    //     // @p := new Process("SendMessageClient");
-    //     // @p->{Parameters}["Session"] := param(USER_SESSION_ID);
-    //     // @p->{Parameters}["Caption"] := "Ошибка";
-    //     // @p->{Parameters}["Message"] := @err;
-    //     // @p-> Run();
-    // end;
-    // $throw new ClientException(@json2,"!!!!!");
-
-end
+end;
