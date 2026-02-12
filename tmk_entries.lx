@@ -46,7 +46,7 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                                         ,{Resource / As AKUZ.POST / Worker / FirstName}
                                         ,{Resource / As AKUZ.POST / Worker / LastName}
                                         ,{Resource / As AKUZ.POST / Worker / FatherName}
-                                        //,{Resource / As AKUZ.ROOM / Name}
+                                        ,{Resource / As AKUZ.ROOM / Name}
                                         ,{Resource / Speciality / Name}
                                         ,{Resource / Division / Branch / Name}
                                         ,{Resource / Division / Branch / LpuMain / Name}
@@ -57,6 +57,7 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                                         //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / PhoneType}
                                         //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / xCleanNumber}
                                         //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Comment}
+                                        ,{Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl}
                             from "AKUZ.ENTRY_AMBULANCE" 
                             where {Ticket / TicketTime}>=  param(CURRENT_DATE)
                                 and {Resource / Division / Branch / LpuMain / LpuID} <> @excludeMO
@@ -78,7 +79,8 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                 //             "speciality": "Специальность",
                 //             "docPhone" : "7ХХХХХХХХХ",   // 11 цифр, начиная с «7»
                 //             "patientFIO": "Фамилия Имя Отчество",
-                //             "patPhone": "+7(999)888-88-77"
+                //             "patPhone": "+7(999)888-88-77",
+                //             "url":"https://max.ru/joincall/..."
                 //         }
                 //     ]
                 // }
@@ -124,7 +126,10 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                                     And {PhoneType} = 3
                                 order by {AddedDate} desc;
                     if (@patPhone -> Count() > 0)
-                    @Entry->{patPhone} := @patPhone[0][0]; //"9225014433";
+                        @Entry->{patPhone} := @patPhone[0][0]; //"9225014433";
+
+                    if(@thisEntry-> {Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl}<>Null() )
+                        @Entry->{url} := @thisEntry-> {Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl};
                     
 
                     // @phones:= @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers};
