@@ -1,4 +1,4 @@
-// Ресурс /tmk_entries -- Список предстоящих Записей на приём на завтра
+// Ресурс /tmk_entries -- Список предстоящих Записей на приём на сегодня/завтра
 begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patPhone, phones ,status)
 
     // declare MAX.ENTRY(
@@ -36,7 +36,7 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
         //     begin()
 
                 //------- ENTRY_AMBULANCE -------//
-                @qrEntries := query {Ticket / TicketID},{Ticket / TicketTime}
+                @qrEntries := query {Ticket / TicketID},{Ticket / TicketTime},{CreationDateTime}
                                         //,{Ticket / TicketType}
                                         //,{EntryPlace} 
                                         //,{ObjectProperties / ObjectType / EntDesc}
@@ -58,8 +58,10 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                                         //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / xCleanNumber}
                                         //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Comment}
                                         ,{Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl}
+                                        ,{Resource / xMAXPhoneMunber} 
                             from "AKUZ.ENTRY_AMBULANCE" 
                             where {Ticket / TicketTime}>=  param(CURRENT_DATE)
+                                AND DateAdd("Day", -2, {Ticket / TicketTime}) <= param(CURRENT_DATE)
                                 and {Resource / Division / Branch / LpuMain / LpuID} <> @excludeMO
                                 // and {Resource / Division / Branch / LpuMain / LpuID} = @moID
                                 And {Ticket / TicketType} = 8 
@@ -80,7 +82,8 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                 //             "docPhone" : "7ХХХХХХХХХ",   // 11 цифр, начиная с «7»
                 //             "patientFIO": "Фамилия Имя Отчество",
                 //             "patPhone": "+7(999)888-88-77",
-                //             "url":"https://max.ru/joincall/..."
+                //             "url":"https://max.ru/joincall/...",
+                //             "createDateTime": "dd-MM-yyyy HH:mm"
                 //         }
                 //     ]
                 // }
@@ -101,6 +104,7 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                                         );
                     @Entry->{speciality} := @thisEntry->{Resource / Speciality / Name};
 
+
                     // подзапрос Номера телефона врача. поле Id2FA из LOGIN
                     @resID := @thisEntry-> {Resource / ResourceID};
                     @docPhone := select top 1 {Id2FA} from "VCLib.LOGIN" 
@@ -109,9 +113,14 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                     if (@docPhone -> Count() > 0)
                         @Entry->{docPhone} := @docPhone[0][0]; //"9225014433";
 
+                    // Номер врача/кабинета их доп.атрибута
+                    @Entry->{docPhone} := @thisEntry-> {Resource / xMAXPhoneMunber};
+
+
                     @Entry->{patientFIO} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / cFIO};
                     // @Entry->{phonesString} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString};
                     @Entry->{dateTime} := Str(@thisEntry->{Ticket / TicketTime},"yyyy-MM-dd HH:mm");
+                    @Entry->{createDateTime} := Str(@thisEntry->{CreationDateTime},"yyyy-MM-dd HH:mm"); // Дата создания
                     //@Entry->{ticketType} := Str(@thisEntry -> {Ticket / TicketType});
                     //@Entry->{entryPlace} := Str(@thisEntry->{EntryPlace});
                     //@Entry->{entryType} := @thisEntry->{ObjectProperties / ObjectType / EntDesc};
