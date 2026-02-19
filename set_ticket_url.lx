@@ -12,8 +12,9 @@ begin(ticketID, url, qrTicket, resp ,status, err)
         if (RegularExpression("^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$", @ticketID) > 0) 
         begin()
 
-            @qrTicket := query top 1 {TicketID} from "AKUZ.TELECONSULTATION_TICKET"
-                            where {TicketID} = @ticketID;
+            @qrTicket := query top 1 {TicketID}
+                         from "AKUZ.TELECONSULTATION_TICKET"
+                         where {TicketID} = @ticketID;
 
             if (@qrTicket->Count()>0 )  //----- НАЙДЕНЫ ЛИ ЗАПИСИ ------//
             foreach(thisTicket in @qrTicket)
@@ -28,13 +29,13 @@ begin(ticketID, url, qrTicket, resp ,status, err)
             end
             else
             begin()
-                @status:=206;
+                @status:=404;
                 @resp->{error} := "Не найдены записи по указанному ticketID";
             end;
 
         end else
         begin()
-            @status:=206;
+            @status:=400;
             @resp->{error} := "Параметр ticketID имеет неверный формат. Идентификатор GUID должен содержать 32 цифры и 4 дефиса (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).";
         end;
 
