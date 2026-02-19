@@ -113,7 +113,7 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                     if (@docPhone -> Count() > 0)
                         @Entry->{docPhone} := @docPhone[0][0]; //"9225014433";
 
-                    // Номер врача/кабинета их доп.атрибута
+                    // Номер врача/кабинета из доп.атрибута
                     @Entry->{docPhone} := @thisEntry-> {Resource / xMAXPhoneMunber};
 
 
