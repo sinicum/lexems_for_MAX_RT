@@ -1,5 +1,5 @@
 // Сервис принимающий подписанные докуметы из MAX
-begin(patAgreeID, transactionID, fileB64, resp ,status, err)
+begin(patAgreeID, transactionID, title, fileB64, qrPatAgree, resp ,status, err)
 
     // {
     //     "patAgreeID" : "482abfd1-f6a5-491a-96a3-08a8bf538487",
@@ -14,6 +14,7 @@ begin(patAgreeID, transactionID, fileB64, resp ,status, err)
         // сажаю прилетевшие поля
         @patAgreeID := @Body -> {patAgreeID};
         @transactionID := @Body -> {transactionID};
+        @title := @Body -> {title};
         @fileB64 := @Body -> {file};
         
         @resp := new MAX.SIGNED_DOCS_RESP_OUT();
@@ -26,13 +27,13 @@ begin(patAgreeID, transactionID, fileB64, resp ,status, err)
                         where {FileID}=@patAgreeID;
 
             if (@qrPatAgree->Count()>0 )  //----- НАЙДЕНЫ ЛИ ЗАПИСИ ------//
-            foreach(thisTicket in @qrPatAgree)
+            foreach(thisPatAgree in @qrPatAgree)
             begin()
-
-            @thisPatAgree ->{Content} := FromBase64String(@fileB64);
+                @thisPatAgree ->{Name} := IsNull(@title,"title");
+                @thisPatAgree ->{Content} := FromBase64String(@fileB64);
                 @thisPatAgree -> Save();
                 // заполняю поля на отдачу
-                @resp -> {status} := "success";
+                @resp -> {status} := @thisPatAgree ->{Name};//"success";
 
             end
             else
@@ -46,6 +47,22 @@ begin(patAgreeID, transactionID, fileB64, resp ,status, err)
         @status:=400;
             @resp->{error} := "Параметр patAgreeID имеет неверный формат. Идентификатор GUID должен содержать 32 цифры и 4 дефиса (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).";
         end;
+
+
+        begin(rso)
+            @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
+            @rso -> {QueueName}:=@patAgreeID;  
+            @rso -> {Content} := Replace(Str(@Body,"Json"),"\"flags_\":\"1\",","");
+            @rso -> {Content} := str(@rso -> {Content} + char(13)+char(10)+char(13)+char(10));
+            @rso -> {Content} := str(@rso -> {Content} + Replace(Str(@resp,"Json"),"\"flags_\":\"1\",",""));
+            @rso -> {RoutingKey}:=@status;
+            @rso -> {Type}:="MAX_PAT_AGREE_FILE_IN";
+            @rso -> {State}:=1;
+            @rso -> {ContentEncoding}:="utf-8";
+            @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
+            @rso -> Save();
+        end;
+
 
         @response.StatusCode := @status;
         return(@resp);
