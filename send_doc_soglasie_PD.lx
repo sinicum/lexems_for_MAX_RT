@@ -1,6 +1,6 @@
 // отправка документа через робот в МАХ. РТ (Татарстан)
 // кнопка отправки. Действие на клиенте. лексема send_doc_soglasie_PD
-begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, patAgreeID
+begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, patAgreeID,
  p, po)
 {
     {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{CardLpu / EhrRusMdr308 / oid}
@@ -42,6 +42,7 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
     );
 
     declare MAX.SEND_DOCUMENTS(
+        patAgreeID: string,
         //dealTypes:MAX.DEAL_TYPE[parent],
         dealTypes: string,
         businessData: MAX.BUSINESS_DATA,
@@ -109,53 +110,42 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
     begin()
         @phone := @phone[0][0];
 
-        //---------- ЗАПОЛНЕНИЕ СТРУКТУРЫ ЗАПРОСА --------------
-        @REQ := new MAX.SEND_DOCUMENTS();
-        @REQ -> {dealTypes} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4"; // = Согласие на обработку ПД 
-            @sectBD := new MAX.BUSINESS_DATA();
-            @sectBD -> {ogrnExecutor}:= @obj->{CardLpu / OGRNCode};
-            @sectBD -> {innExecutor}:= @obj->{CardLpu / InnCode};
-            @sectBD -> {kppExecutor}:= @obj->{CardLpu / KppCode};
-        @REQ -> {businessData} := @sectBD;
-            @sectMD := new MAX.MEDICAL_DATA();
-        @REQ -> {medicalData} := @sectMD;
-        @REQ -> {departmentId}:= "b661d2dd-bfe1-4ec9-970f-89167695cd7c";
-        @REQ -> {phoneNumber} := @phone;//"79625775703";
 
         //---------- СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЮ ----------
         begin(mbb,mbi,str, mb, p)
-            @mbb := 3; // MessageBoxButtons - YesNoCancel
+            @mbb := 1; // MessageBoxButtons - YesNoCancel
             @mbi := 6; // MessageBoxIcon - Question
 
             @str:=           "Уточните у пациента, совпадает ли Этот номер телефона:" 
                 + Char(13) + "                   " + @phone
                 + Char(13) + "     с номером телефона в аккаунте приложения MAX?"
                 + Char(13) 
-                + Char(13) + "Да - Продолжить?"
-                + Char(13) + "Нет - Показать тело запроса и выйти?";
+                + Char(13) + "Ok - Продолжить"
+                + Char(13) + "Cancel - выйти и заполнить!";
             @mb := new MessageBoxInfo(@str, "ВНИМАНИЕ!", @mbb, @mbi); // 8 - Warning
             @p := new Process("GenerateMessageBoxOnClient", @mb);
             @p -> Run();
 
-            if(@mb.DialogResult<>6) 
+            if(@mb.DialogResult=2) 
             begin(str2, mb2, p2)
 
-                @json := Replace(Replace(Str(@REQ,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
-                $throw new ClientException(@json,"Тело запроса");
+                //@json := Replace(Replace(Str(@REQ,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
+                //$throw new ClientException(@json,"Тело запроса");
                 return();
             end;
 
         end;
 
     end;
-        
+
 
     // ------------------ ЕСТЬ ЛИ УЖЕ ТАКОЕ СОГЛАСИЕ ------------------
     @acID := @obj -> {AmbulanceCardID};
-    @qrPatAgree := query top 1 {FileID} from "AKUZ.PATIENT_AGREE" 
+    @qrPatAgree := query top 1 {FileID} from "AKUZ.PATIENT_AGREE"
                     where {AmbulanceCard / AmbulanceCardID} = @acID
                        and {ObjectId} = "95966dd5-6ae1-4606-8d17-905b35a4f3a4" ;
 
+    $throw new ClientException(Str(@qrPatAgree -> Count()),"!!!");
     if (@qrPatAgree -> Count() =0) //-------- ЕСЛИ НЕТ
     //---------- Создаём НОВОЕ "Согласие на обработку ПД" -----------
     begin(patAgree, userQr)
@@ -177,7 +167,7 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
         @patAgree ->{FileNameForm} := 1;
         @patAgree-> Save();
 
-        @patAgreeID :=@patAgree ->{FileID}
+        @patAgreeID :=@patAgree ->{FileID};
         //--------- ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ SendMessageClient 9b0f396d-9bf3-4116-9a03-7b612d9fd245
         begin(p, sessionID)
             @sessionID := param(USER_SESSION_ID);
@@ -185,17 +175,41 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
             @p := new Process("SendMessageClient");
             @p->{Parameters}["Session"] := @sessionID;
             @p->{Parameters}["Caption"] := "Уведомление";
-            @p->{Parameters}["Message"] := "Согласие на обработку ПД создано (" + @patAgreeID +")";
+            @p->{Parameters}["Message"] := "Согласие на обработку ПД создано (" + Str(@patAgreeID) +")";
             @p->Run()[@p];
         end;
     end
     else 
     begin(str)
-        @str := ""
-        $throw new ClientException(@str,"Согласие на  существует");
+        //------------------- то согласие что В БАЗЕ уже С ФАЙЛОМ ?
+        @str := "Согласие на ПД уже существкует " + Str(@patAgreeID);
+        $throw new ClientException(@str,"Согласие на ПД существует");
         return();
     end;
+
+
+    //---------- ЗАПОЛНЕНИЕ СТРУКТУРЫ ЗАПРОСА --------------
+    @REQ := new MAX.SEND_DOCUMENTS();
+    @REQ -> {patAgreeID} := @patAgreeID;
+    @REQ -> {dealTypes} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4"; // = Согласие на обработку ПД 
+        @sectBD := new MAX.BUSINESS_DATA();
+        @sectBD -> {ogrnExecutor}:= @obj->{CardLpu / OGRNCode};
+        @sectBD -> {innExecutor}:= @obj->{CardLpu / InnCode};
+        @sectBD -> {kppExecutor}:= @obj->{CardLpu / KppCode};
+    @REQ -> {businessData} := @sectBD;
+        @sectMD := new MAX.MEDICAL_DATA();
+    @REQ -> {medicalData} := @sectMD;
+    @REQ -> {departmentId}:= "";
+    @REQ -> {departmentOID}:= @obj->{CardLpu / EhrRusMdr308 / oid};
+    @REQ -> {phoneNumber} := @phone;//Replace(Replace(Replace(Replace(@phone,"+","")"()","")")","")"-","");//"79625775703";
+
+    @json := Replace(Replace(Str(@REQ,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
+    $throw new ClientException(@json,"Тело запроса");
+
+
+
     
+    ///---------------------------- ОТПРАВКА ЗАПРОСА с СЕРВЕРА ----------------------------
     @p := new Process("send_doc_soglasie_PD_Proccess",@obj);
     @p->{Parameters}["test"] := "";
     @po := @p -> Run();
