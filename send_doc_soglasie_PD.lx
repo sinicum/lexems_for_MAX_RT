@@ -1,7 +1,10 @@
 // отправка документа через робот в МАХ. РТ (Татарстан)
-begin(phone, req, sectBD, sectMD, sessionID,
-er){
-    {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{Patient / PatientID}
+// кнопка отправки. Действие на клиенте. лексема send_doc_soglasie_PD
+begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree
+ p, po)
+{
+    {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{CardLpu / EhrRusMdr308 / oid}
+    ,{Patient / PatientID},{AmbulanceCardID}
 }
     //---------- заметки из Swagger.YAML описания /SendDocumentsRequest
     //   required:
@@ -22,7 +25,7 @@ er){
     //         "kppExecutor": "7707049388"
     //     },
     //     "medicalData": {},
-    //     "oidMOinMIS": "b661d2dd-bfe1-4ec9-970f-89167695cd7c",
+    //     "departmentOID": "b661d2dd-bfe1-4ec9-970f-89167695cd7c",
     //     "phoneNumber": "79625775703"
     // } 
 
@@ -43,7 +46,8 @@ er){
         dealTypes: string,
         businessData: MAX.BUSINESS_DATA,
         medicalData: MAX.MEDICAL_DATA,
-        oidMOinMIS: string,
+        departmentId: string,
+        departmentOID: string,
         phoneNumber: string
 
     );
@@ -67,81 +71,117 @@ er){
     );
 
 
-    //---------- ЗАПОЛНЕНИЕ ТСРУКТУРЫ ЗАПРОСА --------------
-    @req := new MAX.SEND_DOCUMENTS();
 
-    @req -> {dealTypes} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4"; // Согласие на обработку ПД 
 
-        @sectBD := new MAX.BUSINESS_DATA();
-        @sectBD -> {ogrnExecutor}:= {.}->{CardLpu / OGRNCode};
-        @sectBD -> {innExecutor}:= {.}->{CardLpu / InnCode};
-        @sectBD -> {kppExecutor}:= {.}->{CardLpu / KppCode};
-
-    @req -> {businessData} := @sectBD;
-
-        @sectMD := new MAX.MEDICAL_DATA();
-    
-    @req -> {medicalData} := @sectMD;
+    @obj := {.};
+            // запрос для теста на объекте
+            // @objQr := query {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{CardLpu / EhrRusMdr308 / oid}
+            //             ,{Patient / PatientID},{AmbulanceCardID}
+            //         from "AKUZ.AMBULANCE_CARD"
+            //         where {AmbulanceCardID} = "7d5310da-6ed7-4360-bc0a-e0ce7d737480";
+            // @obj := @objQr[0]; 
+  
     
     // подзапрос Номера телефона пациента. последний изменённый с типом "мобильный"
-    @patID := {.} ->{Patient / PatientID};
+    @patID := @obj ->{Patient / PatientID};
     @phone := select top 1 {Number} from "AKUZ.PHONE_NUMBER"
                 where {Patient / PatientID} = @patID
                     And {Number} <> Null()
                     And {PhoneType} = 3
                 order by {AddedDate} desc;
-    if (@phone -> Count() > 0)
-        @req->{phoneNumber} := @phone[0][0]; 
     //@phone := "79625775703"; // телефон Всеволода
     //@phone := "79172367682"; // мой
 
-    @req -> {departmentId}:= "b661d2dd-bfe1-4ec9-970f-89167695cd7c";
-    @req -> {phoneNumber} := @phone;//"79625775703";
 
-
-    
-    if (@phone <> Null())
-    begin(mbb,mbi,str, mb, p)
-
-        @mbb := 3; // MessageBoxButtons - YesNo
+    // ------------------ ЕСТЬ ЛИ МОБИЛЬНЫЙ В АМБ.КАРТЕ ------------------
+    if (@phone->Count()=0)
+    //-------------------- СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЮ ЗАПОЛНИТЬ НОМЕР --------------------
+    begin(mbb,mbi,str, mb, p) 
+        @mbb := 0; // MessageBoxButtons - 0-Ok
         @mbi := 8; // MessageBoxIcon
-
-        @str:= "ВНИМАНИЕ!" + Char(13) + "Этот номер телефона:" 
-            + Char(13) + @phone
-            + Char(13) + "совпадает с номером телефона в аккаунте приложения MAX?"
-            + Char(13) + Char(13) +"Да - Продолжить?"
-            + Char(13) + "Нет - Показать тело запроса и выйти?";
-        @mb := new MessageBoxInfo(@str, "Заголовок", @mbb, @mbi); // 8 - Warning
+        @str:= "ЗАПОЛНИТЕ МОБИЛЬНЫЙ НОМЕР ТЕЛЕФОНА В АМБ.КАРТЕ";
+        @mb := new MessageBoxInfo(@str, "ВНИМАНИЕ!", @mbb, @mbi); // 8 - Warning
         @p := new Process("GenerateMessageBoxOnClient", @mb);
         @p -> Run();
+        Return ();
+    end
+    else
+    begin()
+        @phone := @phone[0][0];
 
-        if(@mb.DialogResult<>6) 
-        begin(str2, mb2, p2)
-            // @str2:= "Выберите «Попробовать снова»";
-            // @mb2 := new MessageBoxInfo(@str2, "ВНИМАНИЕ! Так нельзя!", 0, 7); // 7 - Error
-            // @p2 := new Process("GenerateMessageBoxOnClient", @mb2);
-            // @p2 -> Run();
-            @json := Replace(Replace(Str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
-            $throw new ClientException(@json,"Тело запроса");
-            return();
+        //---------- ЗАПОЛНЕНИЕ СТРУКТУРЫ ЗАПРОСА --------------
+        @REQ := new MAX.SEND_DOCUMENTS();
+        @REQ -> {dealTypes} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4"; // = Согласие на обработку ПД 
+            @sectBD := new MAX.BUSINESS_DATA();
+            @sectBD -> {ogrnExecutor}:= @obj->{CardLpu / OGRNCode};
+            @sectBD -> {innExecutor}:= @obj->{CardLpu / InnCode};
+            @sectBD -> {kppExecutor}:= @obj->{CardLpu / KppCode};
+        @REQ -> {businessData} := @sectBD;
+            @sectMD := new MAX.MEDICAL_DATA();
+        @REQ -> {medicalData} := @sectMD;
+        @REQ -> {departmentId}:= "b661d2dd-bfe1-4ec9-970f-89167695cd7c";
+        @REQ -> {phoneNumber} := @phone;//"79625775703";
+
+        //---------- СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЮ ----------
+        begin(mbb,mbi,str, mb, p)
+            @mbb := 3; // MessageBoxButtons - YesNoCancel
+            @mbi := 6; // MessageBoxIcon - Question
+
+            @str:=           "Уточните у пациента, совпадает ли Этот номер телефона:" 
+                + Char(13) + "                   " + @phone
+                + Char(13) + "     с номером телефона в аккаунте приложения MAX?"
+                + Char(13) 
+                + Char(13) + "Да - Продолжить?"
+                + Char(13) + "Нет - Показать тело запроса и выйти?";
+            @mb := new MessageBoxInfo(@str, "ВНИМАНИЕ!", @mbb, @mbi); // 8 - Warning
+            @p := new Process("GenerateMessageBoxOnClient", @mb);
+            @p -> Run();
+
+            if(@mb.DialogResult<>6) 
+            begin(str2, mb2, p2)
+
+                @json := Replace(Replace(Str(@REQ,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
+                $throw new ClientException(@json,"Тело запроса");
+                return();
+            end;
+
         end;
 
     end;
+        
 
-    // $throw (Replace(Replace(Str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"",""));
+    // ------------------ ЕСТЬ ЛИ УЖЕ ТАКОЕ СОГЛАСИЕ ------------------
+    @acID := @obj -> {AmbulanceCardID};
+    @qrPatAgree := query top 1 {FileID} from "AKUZ.PATIENT_AGREE" where {AmbulanceCard / AmbulanceCardID} = @acID;
 
+    if (@qrPatAgree -> Count() =0) //-------- ЕСЛИ НЕТ
+    //---------- Создаём НОВОЕ "Согласие на обработку ПД" -----------
+    begin(patAgree, userQr)
 
-    /////// ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ
-    // begin(p, sessionID)
-    //     @sessionID := param(USER_SESSION_ID);
-    //     @p := new Process("SendMessageClient");
-    //     @p->{Parameters}["Session"] := @sessionID;
-    //     @p->{Parameters}["Caption"] := "Hello";
-    //     @p->{Parameters}["Message"] := Replace(Replace(Str(@req,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","");//@json2;
-    //     @p->Run()[@p];
-    // end;
+        // 3907befe-c0ba-4d56-9cb7-aaab990e2c68 // моя АК в ГБ7
+
+        @userQr := query top 1 {UserID} from "VCLib.BASE_USERS" where {UserID} = param(CURRENT_USER);
+
+        @patAgree := new AKUZ.PATIENT_AGREE (new Apartment());
+        @patAgree ->{AmbulanceCard} := @obj ;// *Object // AMB_CARD 
+        @patAgree ->{CreationDate} := param(CURRENT_DATE_TIME); // Дата выдачи согласия
+        @patAgree ->{ObjectId} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4";  // Идентификатор документа, на которое выдано согласие 
+        @patAgree ->{Name} := ""; // сперва пусто, потом название от бота ".zip"
+        @patAgree ->{SaveFileLocation} = 1; // 1 - В базе данных
+        @patAgree ->{BaseUsers} := @userQr[0]; //*Object // Пользователь, взявший согласие
+        @patAgree ->{UseOle} := True;
+        @patAgree ->{ObjectEntityId} := 1 ; // Сущность документа, на которое выдано согласие
+        @patAgree ->{AgreeType} := 0; // Тип согласия, 0 - "Согласие"
+        @patAgree ->{FileNameForm} := 1;
+        @patAgree-> Save();
+    end
+    else 
+    begin()
+        return();
+    end;
     
-    @p := new Process("GetExam_from_AIST",@obj);
+    @p := new Process("send_doc_soglasie_PD_Proccess",@obj);
+    @p->{Parameters}["test"] := "";
     @po := @p -> Run();
 
     ////////////   СЕРВЕРНАЯ ЧАСТЬ   ////////////
