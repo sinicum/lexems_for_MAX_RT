@@ -1,6 +1,6 @@
 // отправка документа через робот в МАХ. РТ (Татарстан)
 // кнопка отправки. Действие на клиенте. лексема send_doc_soglasie_PD
-begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree,
+begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, patAgreeID
  p, po)
 {
     {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{CardLpu / EhrRusMdr308 / oid}
@@ -152,7 +152,9 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree,
 
     // ------------------ ЕСТЬ ЛИ УЖЕ ТАКОЕ СОГЛАСИЕ ------------------
     @acID := @obj -> {AmbulanceCardID};
-    @qrPatAgree := query top 1 {FileID} from "AKUZ.PATIENT_AGREE" where {AmbulanceCard / AmbulanceCardID} = @acID;
+    @qrPatAgree := query top 1 {FileID} from "AKUZ.PATIENT_AGREE" 
+                    where {AmbulanceCard / AmbulanceCardID} = @acID
+                       and {ObjectId} = "95966dd5-6ae1-4606-8d17-905b35a4f3a4" ;
 
     if (@qrPatAgree -> Count() =0) //-------- ЕСЛИ НЕТ
     //---------- Создаём НОВОЕ "Согласие на обработку ПД" -----------
@@ -174,9 +176,23 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree,
         @patAgree ->{AgreeType} := 0; // Тип согласия, 0 - "Согласие"
         @patAgree ->{FileNameForm} := 1;
         @patAgree-> Save();
+
+        @patAgreeID :=@patAgree ->{FileID}
+        //--------- ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ SendMessageClient 9b0f396d-9bf3-4116-9a03-7b612d9fd245
+        begin(p, sessionID)
+            @sessionID := param(USER_SESSION_ID);
+            print(@sessionID);
+            @p := new Process("SendMessageClient");
+            @p->{Parameters}["Session"] := @sessionID;
+            @p->{Parameters}["Caption"] := "Уведомление";
+            @p->{Parameters}["Message"] := "Согласие на обработку ПД создано (" + @patAgreeID +")";
+            @p->Run()[@p];
+        end;
     end
     else 
-    begin()
+    begin(str)
+        @str := ""
+        $throw new ClientException(@str,"Согласие на  существует");
         return();
     end;
     
