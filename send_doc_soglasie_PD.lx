@@ -1,6 +1,6 @@
 // отправка документа через робот в МАХ. РТ (Татарстан)
 // кнопка отправки. Действие на клиенте. лексема send_doc_soglasie_PD
-begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree
+begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree,
  p, po)
 {
     {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{CardLpu / EhrRusMdr308 / oid}
