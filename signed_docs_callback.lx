@@ -1,4 +1,4 @@
-// Сервис принимающий подписанные докуметы из MAX
+// Сервис принимающий подписанные документы из MAX /signed_docs_callback
 begin(patAgreeID, transactionID, title, fileB64, qrPatAgree, resp ,status, err)
 
     // {
