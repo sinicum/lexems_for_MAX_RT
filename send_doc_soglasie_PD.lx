@@ -1,6 +1,6 @@
 // отправка документа через робот в МАХ. РТ (Татарстан)
 // кнопка отправки. Действие на клиенте. лексема send_doc_soglasie_PD
-begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, patAgreeID,
+begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, patAgreeID, patAgree,
  p, po)
 {
     {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{CardLpu / EhrRusMdr308 / oid}
@@ -75,14 +75,14 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
 
     // ------------------ ЕСТЬ ЛИ УЖЕ ТАКОЕ СОГЛАСИЕ ------------------
     @acID := @obj -> {AmbulanceCardID};
-    @qrPatAgree := query top 1 {FileID} from "AKUZ.PATIENT_AGREE"
+    @qrPatAgree := query top 1 {FileID},{Status} from "AKUZ.PATIENT_AGREE"
                     where {AmbulanceCard / AmbulanceCardID} = @acID
-                       and {ObjectId} = "95966dd5-6ae1-4606-8d17-905b35a4f3a4" ;
+                       and {ObjectId} = "95966dd5-6ae1-4606-8d17-905b35a4f3a4" ; // "Согласие на обработку ПДн"
 
     //$throw new ClientException(Str(@qrPatAgree -> Count()),"!!!");
     if (@qrPatAgree -> Count() =0) //-------- ЕСЛИ НЕТ
     //---------- Создаём НОВОЕ "Согласие на обработку ПД" -----------
-    begin(patAgree, userQr)
+    begin(userQr)
 
         // 3907befe-c0ba-4d56-9cb7-aaab990e2c68 // моя АК в ГБ7
         //@acQr := query top 1 {AmbulanceCardID} from "AKUZ.AMBULANCE_CARD" where {AmbulanceCardID} = "3907befe-c0ba-4d56-9cb7-aaab990e2c68";
@@ -118,10 +118,14 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
     end
     else 
     begin(str)
+        @patAgree := @qrPatAgree[0];
         //ErrorDescription USER_NOT_FOUND
-        if (@qrPatAgree -> {Status} =0) // 0 - Активно 
+        //$throw(str(@qrPatAgree -> Count()));
+        //$throw(str((@patAgree -> {Status} =0)));
+        if (@patAgree -> {Status} =0) // 0 - Активно 
         begin()
-            if (@qrPatAgree ->{Content} = Null())
+            $throw(str((@patAgree -> {Status} =0)));
+            if (@patAgree ->{Content} <> Null())
             //------------------- то согласие что В БАЗЕ уже С ФАЙЛОМ ?
             begin()
                 @str :=  "Документ «Согласие на обработку ПД» уже было создано в системе ГИС ЭЗ РТ." 
@@ -140,7 +144,7 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
             end;
         end
         else 
-        if (@qrPatAgree -> {Status} =1) // 1 - Отозвано
+        if (@patAgree -> {Status} =1) // 1 - Отозвано
         begin()
                 @str :=  "Документ «Согласие на обработку ПД» уже было создано в системе ГИС ЭЗ РТ." 
                 + Char(13) + "Однако отправка через систему MAX в Госключ была завершена с ошибкой:"
