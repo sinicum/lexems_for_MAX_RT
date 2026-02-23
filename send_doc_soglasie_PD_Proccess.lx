@@ -1,35 +1,78 @@
-begin(rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,err)
+// send_doc_soglasie_PD_Proccess
+begin(patAgreeID,
+    obj,rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,err)
     ////////////   СЕРВЕРНАЯ ЧАСТЬ   ////////////
 
-    /// --------------- CURL 1 / // ГКБ7
-    // curl -v -H "Content-Type: application/json; charset=utf-8" -H "Authorization: Basic 0JDQtNC80LjQvdC40YHRgtGA0LDRgtC+0YA6" -d "{\"dealTypes\": \"95966dd5-6ae1-4606-8d17-905b35a4f3a4\",\"businessData\": {\"ogrnExecutor\": \"1021603148269\",\"innExecutor\": \"1658012247\",\"kppExecutor\": \"165701001\"},\"medicalData\": {},\"departmentId\": \"b661d2dd-bfe1-4ec9-970f-89167695cd7c\",\"phoneNumber\": \"79625775703\"}" http://10.224.105.150:3000/max_prod_gk/hs/sign_documents/sendDocumetns
-    // http://10.224.105.150:3000
+
+    $throw("123123123");
+
+    //-------------  СОЗДАНИЕ СТРУКТУРЫ СУЩНОСТЕЙ  -------------//
+    declare MAX.BUSINESS_DATA(
+        ogrnExecutor:string,
+        innExecutor:string,
+        kppExecutor:string
+    );
+
+    declare MAX.MEDICAL_DATA(
+        innExecutor:string,
+        kppExecutor:string
+    );
+
+    declare MAX.SEND_DOCUMENTS(
+        patAgreeID: string,
+        //dealTypes:MAX.DEAL_TYPE[parent],
+        dealTypes: string,
+        businessData: MAX.BUSINESS_DATA,
+        medicalData: MAX.MEDICAL_DATA,
+        departmentId: string,
+        departmentOID: string,
+        phoneNumber: string
+
+    );
+
+    // ------------- структура тела ответа в JSON -------------
+    // успешный запрос/ответ:
     // {
-    //     "dealTypes": "95966dd5-6ae1-4606-8d17-905b35a4f3a4",
-    //     "businessData": {                        
-    //         "ogrnExecutor": "1021603148269",
-    //         "innExecutor": "1658012247",
-    //         "kppExecutor": "165701001"
-    //     },
-    //     "medicalData": {},
-    //     "departmentId": "b661d2dd-bfe1-4ec9-970f-89167695cd7c",
-    //     "phoneNumber": "79625775703"         // Всеволод
+    //   "transactionId": "da84baea-7d61-4f18-a05f-976dfeee15f3"
+    // }
+    // ели у них ошибка:
+    // {
+    //   "StateCode": 400,
+    //   "ErrorDescription": "{\"error\":\"USER_NOT_FOUND\"}\n"
     // }
 
-    ////----- curl 2 / Отловлен в теле запроса / СПАСЕНИЕ
-    // curl -v -H "Content-Type: application/json; charset=utf-8" -H "Authorization: Basic 0JDQtNC80LjQvdC40YHRgtGA0LDRgtC+0YA6" -d "{\"dealTypes\": \"95966dd5-6ae1-4606-8d17-905b35a4f3a4\",\"businessData\": {\"ogrnExecutor\": \"1121690035532\",\"innExecutor\": \"1659120340\",\"kppExecutor\": \"165901001\"},\"medicalData\": {},\"departmentId\": \"b661d2dd-bfe1-4ec9-970f-89167695cd7c\",\"phoneNumber\": \"79625775703\"}" http://10.224.24.55/max_prod_gk/hs/sign_documents/sendDocumetns
-    // http://10.224.24.55
-    // {
-    //     "dealTypes": "95966dd5-6ae1-4606-8d17-905b35a4f3a4",
-    //     "businessData": {
-    //         "ogrnExecutor": "1121690035532",
-    //         "innExecutor": "1659120340",
-    //         "kppExecutor": "165901001"
-    //     },
-    //     "medicalData": {},
-    //     "departmentId": "b661d2dd-bfe1-4ec9-970f-89167695cd7c",
-    //     "phoneNumber": "79625775703"
-    // }
+    declare MAX.DOCS_SERV_RESPONSE(
+        transactionId: strinig, 
+
+        StateCode: int,             // 400,
+        ErrorDescription: string    // "{\"error\":\"USER_NOT_FOUND\"}\n"
+    );
+
+
+    @obj :=  @process->{Object};
+    @patAgreeID := @process->{Parameters}["patAgreeID"];
+    @phone := @process->{Parameters}["phone"];
+
+
+    //---------- ЗАПОЛНЕНИЕ СТРУКТУРЫ ЗАПРОСА --------------
+    @REQ := new MAX.SEND_DOCUMENTS();
+    @REQ -> {patAgreeID} := @patAgreeID;
+    @REQ -> {dealTypes} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4"; // = Согласие на обработку ПД 
+        @sectBD := new MAX.BUSINESS_DATA();
+        @sectBD -> {ogrnExecutor}:= @obj->{CardLpu / OGRNCode};
+        @sectBD -> {innExecutor}:= @obj->{CardLpu / InnCode};
+        @sectBD -> {kppExecutor}:= @obj->{CardLpu / KppCode};
+    @REQ -> {businessData} := @sectBD;
+        @sectMD := new MAX.MEDICAL_DATA();
+    @REQ -> {medicalData} := @sectMD;
+    @REQ -> {departmentId}:= "";
+    @REQ -> {departmentOID}:= @obj->{CardLpu / EhrRusMdr308 / oid};
+    @REQ -> {phoneNumber} := @phone;//Replace(Replace(Replace(Replace(@phone,"+","")"()","")")","")"-","");//"79625775703";
+
+    @json := Replace(Replace(Str(@REQ,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
+    //$throw new ClientException(@json,"Тело запроса");
+
+
 
 
 
@@ -53,7 +96,9 @@ begin(rso,headers,address,response,result,statusCode,status,error_text,url,json,
     @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
     @rso -> Save();
 
+    $throw("123123123");
 
+    // --------------------- ОТПРАВКА ЗАПРОСА ---------------------
 
     // try
     // begin()
