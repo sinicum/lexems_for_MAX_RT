@@ -1,8 +1,8 @@
 // отправка документа через робот в МАХ. РТ (Татарстан)
 // кнопка отправки. Действие на клиенте. лексема send_doc_soglasie_PD
-begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, acID, qrPatAgree, patAgreeID, patAgree,patAgreeDate,
- p, po, patAgreeID, phone, REQ, sectBD, sectMD, 
-    obj,rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,err)
+begin(objQr, obj, REQ, patID, phone, acID, qrPatAgree, patAgreeID, patAgree,patAgreeDate,
+ p, po,  sectBD, sectMD,
+    rso,headers,address,response,result,statusCode,status,error_text,url,json,json2,err)
 {
     {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{CardLpu / EhrRusMdr308 / oid}
     ,{Patient / PatientID},{AmbulanceCardID}
@@ -28,52 +28,9 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, acID, qrPatAgree, patAgreeI
                 order by {AddedDate} desc;
     //@phone := "79625775703"; // телефон Всеволода
     //@phone := "79172367682"; // мой
+    @phone := @phone[0][0];
 
 
-    // ------------------ ЕСТЬ ЛИ МОБИЛЬНЫЙ В АМБ.КАРТЕ ------------------
-    if (@phone->Count()=0)
-    //-------------------- СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЮ ЗАПОЛНИТЬ НОМЕР --------------------
-    begin(mbb,mbi,str, mb, p) 
-        @mbb := 0; // MessageBoxButtons - 0-Ok
-        @mbi := 8; // MessageBoxIcon
-        @str:= "ЗАПОЛНИТЕ МОБИЛЬНЫЙ НОМЕР ТЕЛЕФОНА В АМБ.КАРТЕ";
-        @mb := new MessageBoxInfo(@str, "ВНИМАНИЕ!", @mbb, @mbi); // 8 - Warning
-        @p := new Process("GenerateMessageBoxOnClient", @mb);
-        @p -> Run();
-        Return ();
-    end
-    else
-    begin()
-        @phone := @phone[0][0];
-
-
-        //---------- СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЮ ----------
-        begin(mbb,mbi,str, mb, p)
-            @mbb := 1; // MessageBoxButtons - YesNoCancel
-            @mbi := 6; // MessageBoxIcon - Question
-
-            @str:=           "Уточните у пациента, совпадает ли ЭТОТ номер телефона:" 
-                + Char(13) + "                          " + @phone
-                + Char(13) + "     с номером телефона в аккаунте приложения MAX?"
-                + Char(13) 
-                + Char(13) + "ОК - Продолжить"
-                + Char(13) + "Отмена - Выйти и заполнить!";
-            @mb := new MessageBoxInfo(@str, "ВНИМАНИЕ!", @mbb, @mbi); // 8 - Warning
-            @p := new Process("GenerateMessageBoxOnClient", @mb);
-            @p -> Run();
-
-            if(@mb.DialogResult=2) 
-            begin(str2, mb2, p2)
-
-                //@json := Replace(Replace(Str(@REQ,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
-                //$throw new ClientException(@json,"Тело запроса");
-                return();
-            end;
-
-        end;
-
-    end;
-    // 381485
 
     // ------------------ ЕСТЬ ЛИ УЖЕ ТАКОЕ СОГЛАСИЕ ------------------
     @acID := @obj -> {AmbulanceCardID};
@@ -84,7 +41,7 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, acID, qrPatAgree, patAgreeI
                        
     //$throw(Str(@acID));
     //$throw new ClientException(Str(@qrPatAgree -> Count()),"!!!");
-    if (@qrPatAgree -> Count() =0) //-------- ЕСЛИ НЕТ
+    //if (@qrPatAgree -> Count() =0) //-------- ЕСЛИ НЕТ
     //---------- Создаём НОВОЕ "Согласие на обработку ПД" -----------
     begin(userQr)
 
@@ -119,48 +76,8 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, acID, qrPatAgree, patAgreeI
             + Char(13) + "(" + Str(@patAgreeID) +")";
             @p->Run()[@p];
         end;
-    end
-    else 
-    begin(str)
-        @patAgree := @qrPatAgree[0];
-        @patAgreeID :=@patAgree ->{FileID};
-        @patAgreeDate := Str(@patAgree ->{CreationDate},"dd.MM.yyyy");
-        //ErrorDescription USER_NOT_FOUND
-        //$throw(str(@qrPatAgree -> Count()));
-        //$throw(str((@patAgree -> {Status} )));
-        if (@patAgree -> {Status} =0) // 0 - Активно 
-        begin()
-            //$throw(str((@patAgree ->{Content} <> Null())));
-            if (@patAgree ->{Content} <> Null())
-            //------------------- то согласие что В БАЗЕ уже С ФАЙЛОМ ?
-            begin()
-                @str :=  "Документ «Согласие на обработку ПД» уже было создано в системе ГИС ЭЗ РТ." 
-                + Char(13) + "Файл подписи получен и успешно сохранён в системе."
-                + Char(13) + "(Дата: " + Str(@patAgreeDate) +")";
-                $throw new ClientException(@str,"Согласие на обработку ПД существует");
-                return();
-            end
-            else
-            begin()
-                @str :=  "Документ «Согласие на обработку ПД» уже было создано в системе ГИС ЭЗ РТ." 
-                + Char(13) + "Файл подписи ещё на получен. Следует дождаться получения файла подписи"
-                + Char(13) + "(Дата: " + Str(@patAgreeDate) +")";
-                $throw new ClientException(@str,"Согласие на обработку ПД существует");
-                return();
-            end;
-        end
-        else 
-        if (@patAgree -> {Status} =1) // 1 - Отозвано
-        begin()
-                @str :=  "Документ «Согласие на обработку ПД» уже было создано в системе ГИС ЭЗ РТ." 
-                + Char(13) + "Однако отправка через систему MAX в Госключ была завершена с ошибкой:"
-                + Char(13) + @patAgree ->{Name}
-                + Char(13) + "(Дата: " + Str(@patAgreeDate) +")";
-                //+ Char(13) + "(" + Str(@patAgreeID) +")";
-                $throw new ClientException(@str,"Согласие на обработку ПД существует");
-                return();
-        end
     end;
+
     // 381485
 
 
@@ -220,9 +137,9 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, acID, qrPatAgree, patAgreeI
     );
 
 
-    @obj :=  @process->{Object};
-    @patAgreeID := @process->{Parameters}["patAgreeID"];
-    @phone := @process->{Parameters}["phone"];
+    // @obj :=  @process->{Object};
+    // @patAgreeID := @process->{Parameters}["patAgreeID"];
+    // @phone := @process->{Parameters}["phone"];
 
 
     //---------- ЗАПОЛНЕНИЕ СТРУКТУРЫ ЗАПРОСА --------------
@@ -238,26 +155,29 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, acID, qrPatAgree, patAgreeI
     @REQ -> {medicalData} := @sectMD;
     @REQ -> {departmentId}:= "b661d2dd-bfe1-4ec9-970f-89167695cd7c";
     @REQ -> {departmentOID}:= @obj->{CardLpu / EhrRusMdr308 / oid};
-    @REQ -> {phoneNumber} := @phone;//Replace(Replace(Replace(Replace(@phone,"+","")"()","")")","")"-","");//"79625775703";
+    //@REQ -> {phoneNumber} := @phone;//Replace(Replace(Replace(Replace(@phone,"+","")"()","")")","")"-","");//"79625775703";
+    @REQ -> {phoneNumber} := Replace(Replace(Replace(Replace(Str(@phone),"+",""),"(",""),")",""),"-","");
 
     @json := Replace(Replace(Str(@REQ,"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
     //$throw new ClientException(@json,"Тело запроса");
+    print(@json);
 
 
 
 
     @headers:= new Hashtable();
     @headers["Authorization"] := "Basic 0JDQtNC80LjQvdC40YHRgtGA0LDRgtC+0YA6";
-    @headers["Content-Type"]:="application/json";
+    @headers["Content-Type"]:="application/json; charset=utf-8";
 
-    @address:="http://10.224.24.55/max_prod_gk/hs/sign_documents/sendDocumetns"; // с сервера
-    // @address:="http://10.224.105.150:3000/max_prod_gk/hs/sign_documents/sendDocumetns"; // с клиента
+    // @address:="http://10.224.24.55/max_prod_gk/hs/sign_documents/sendDocumetns"; // с сервера
+    @address:="http://10.224.105.150:3000/max_prod_gk/hs/sign_documents/sendDocumetns"; // с клиента
     
+    //$throw(Str(@json));
 
 
     @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
-    @rso -> {QueueName}:=@address;
-    @rso -> {Content}:=@json;
+    @rso -> {QueueName}:=@patAgreeID;
+    @rso -> {Content}:=Str(@json);
     @rso -> {RoutingKey}:="";
     @rso -> {Type}:= "MAX_SEND_DOC_REQUEST";
     @rso -> {State}:=1;
@@ -280,19 +200,19 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, acID, qrPatAgree, patAgreeI
             ,{phoneNumber}
         ;
 
-        @result:=$Expect unsafe "MAX.DOCS_SERV_RESPONSE" From @response inbody as json;
+        //@result:=$Expect unsafe "MAX.DOCS_SERV_RESPONSE" From @response inbody as json;
         //////////////////////////////////////////////////////////////////////////
             // ПРИМЕР посадить ответ в текст
-            // @result:=$Expect unsafe "string" From @response inbody;
-            // @json2:=@result["Response"]->{Body};	
+            @result:=$Expect unsafe "string" From @response inbody;
+            @json2:=@result["Response"]->{Body};	
 
         
         @statusCode:= @result["Response"]->{StatusCode}; // 200 - Работает
-        //@json2 := str(@result["Body"],"Json"); // весь ответ в строке в json
+        //@json2 := Replace(Replace(str(@result["Body"],"Json"),"\"flags_\":\"1\",",""),"\"flags_\":\"1\"","") ;
 
 
     @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
-    @rso -> {QueueName}:=IsNull(@url,"");
+    @rso -> {QueueName}:=@patAgreeID;
     @rso -> {Content}:=@json2;
     @rso -> {RoutingKey}:=@statusCode;
     @rso -> {Type}:="MAX_SEND_DOC_RESPONSE";
@@ -300,6 +220,23 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, acID, qrPatAgree, patAgreeI
     @rso -> {ContentEncoding}:="utf-8";
     @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
     @rso -> Save();
+
+    
+    // @json2 :=  "{\"StateCode\":400,\"ErrorDescription\":\"Тело отправляемого запроса не имеет phoneNumber\"}";
+    if(@json2 Like "%transactionId%")
+        @status := True;
+        //@transactionId:= @result["Body"]->{transactionId};
+
+    if(@json2 Like "%ErrorDescription%")
+        @error_text:= @json2;
+        //@error_text:= @result["Body"]->{ErrorDescription};
+
+
+
+    print(@error_text);
+
+
+
     // end
     // catch(ex)
     // begin()
