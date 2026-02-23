@@ -1,21 +1,21 @@
 // отправка документа через робот в МАХ. РТ (Татарстан)
 // кнопка отправки. Действие на клиенте. лексема send_doc_soglasie_PD
 begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, patAgreeID, patAgree,patAgreeDate,
- p, po)
+ p, po, status, error_text, str, rso)
 {
     {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{CardLpu / EhrRusMdr308 / oid}
     ,{Patient / PatientID},{AmbulanceCardID}
 }
 
 
-    // @obj := {.};
+    @obj := {.};
             // запрос для теста на объекте
-            @objQr := query {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{CardLpu / EhrRusMdr308 / oid}
-                        ,{Patient / PatientID},{AmbulanceCardID}
-                    from "AKUZ.AMBULANCE_CARD"
-                    // where {AmbulanceCardID} = "7d5310da-6ed7-4360-bc0a-e0ce7d737480"; // Спасение 
-                    where {AmbulanceCardID} ="3907befe-c0ba-4d56-9cb7-aaab990e2c68";
-            @obj := @objQr[0]; 
+            // @objQr := query {CardLpu / OGRNCode},{CardLpu / InnCode},{CardLpu / KppCode},{CardLpu / EhrRusMdr308 / oid}
+            //             ,{Patient / PatientID},{AmbulanceCardID}
+            //         from "AKUZ.AMBULANCE_CARD"
+            //         // where {AmbulanceCardID} = "7d5310da-6ed7-4360-bc0a-e0ce7d737480"; // Спасение 
+            //         where {AmbulanceCardID} ="3907befe-c0ba-4d56-9cb7-aaab990e2c68";
+            // // @obj := @objQr[0]; 
   
     
     // подзапрос Номера телефона пациента. последний изменённый с типом "мобильный"
@@ -79,7 +79,8 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
 
     @qrPatAgree := query top 1 {FileID},{Status},{CreationDate} from "AKUZ.PATIENT_AGREE"
                     where {AmbulanceCard / AmbulanceCardID} = @acID
-                       and {ObjectId} = "95966dd5-6ae1-4606-8d17-905b35a4f3a4" ; // "Согласие на обработку ПДн"
+                       and {ObjectId} = "95966dd5-6ae1-4606-8d17-905b35a4f3a4"  // "Согласие на обработку ПДн"
+                       and {Status} <> 1;
                        
     //$throw(Str(@acID));
     //$throw new ClientException(Str(@qrPatAgree -> Count()),"!!!");
@@ -102,76 +103,136 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
         @patAgree ->{ObjectEntityId} := 1 ; // Сущность документа, на которое выдано согласие
         @patAgree ->{AgreeType} := 0; // Тип согласия, 0 - "Согласие"
         @patAgree ->{FileNameForm} := 1;
-        @patAgree ->{Status} := 0; // 0 - Активно , 1 - Отозвано
+        //@patAgree ->{Status} := 0; // 0 - Активно , 1 - Отозвано
         @patAgree-> Save();
 
         @patAgreeID :=@patAgree ->{FileID};
         //--------- ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ SendMessageClient 9b0f396d-9bf3-4116-9a03-7b612d9fd245
         begin(p, sessionID)
+            @str :=  "Будет произведена отправка документа «Согласие на обработку персональных данных» с использованием системы «Госключ»"
+            + Char(13) + "Убедитесь, что пациент зарегистрирован в системах MAX и Госключ."
+            + Char(13) + "(" + Str(@patAgreeID) +")";
             @sessionID := param(USER_SESSION_ID);
-            print(@sessionID);
             @p := new Process("SendMessageClient");
             @p->{Parameters}["Session"] := @sessionID;
             @p->{Parameters}["Caption"] := "Уведомление";
-            @p->{Parameters}["Message"] := "Будет произведена отправка документа «Согласие на обработку персональных данных» с использованием системы «Госключ»"
-            + Char(13) + "Убедитесь, что пациент в зарегистрирован в системах MAX и Госключ."
-            + Char(13) + "(" + Str(@patAgreeID) +")";
+            @p->{Parameters}["Message"] := @str;
             @p->Run()[@p];
         end;
     end
     else 
-    begin(str)
+    begin()
         @patAgree := @qrPatAgree[0];
         @patAgreeID :=@patAgree ->{FileID};
         @patAgreeDate := Str(@patAgree ->{CreationDate},"dd.MM.yyyy");
         //ErrorDescription USER_NOT_FOUND
         //$throw(str(@qrPatAgree -> Count()));
         //$throw(str((@patAgree -> {Status} )));
-        if (@patAgree -> {Status} =0) // 0 - Активно 
-        begin()
+
             //$throw(str((@patAgree ->{Content} <> Null())));
             if (@patAgree ->{Content} <> Null())
             //------------------- то согласие что В БАЗЕ уже С ФАЙЛОМ ?
-            begin()
+            begin(p, sessionID)
                 @str :=  "Документ «Согласие на обработку ПД» уже было создано в системе ГИС ЭЗ РТ." 
-                + Char(13) + "Файл подписи получен и успешно сохранён в системе."
+                + Char(13) + "Файл подписи был получен и успешно сохранён в системе."
                 + Char(13) + "(Дата: " + Str(@patAgreeDate) +")";
-                $throw new ClientException(@str,"Согласие на обработку ПД существует");
+                @sessionID := param(USER_SESSION_ID);
+                @p := new Process("SendMessageClient");
+                @p->{Parameters}["Session"] := @sessionID;
+                @p->{Parameters}["Caption"] := "Уведомление";
+                @p->{Parameters}["Message"] := @str;
+                @p->Run()[@p];
                 return();
             end
             else
-            begin()
+            begin(p, sessionID)
                 @str :=  "Документ «Согласие на обработку ПД» уже было создано в системе ГИС ЭЗ РТ." 
                 + Char(13) + "Файл подписи ещё на получен. Следует дождаться получения файла подписи"
                 + Char(13) + "(Дата: " + Str(@patAgreeDate) +")";
-                $throw new ClientException(@str,"Согласие на обработку ПД существует");
+                @sessionID := param(USER_SESSION_ID);
+                @p := new Process("SendMessageClient");
+                @p->{Parameters}["Session"] := @sessionID;
+                @p->{Parameters}["Caption"] := "Уведомление";
+                @p->{Parameters}["Message"] := @str;
+                @p->Run()[@p];
                 return();
             end;
-        end
-        else 
-        if (@patAgree -> {Status} =1) // 1 - Отозвано
-        begin()
-                @str :=  "Документ «Согласие на обработку ПД» уже было создано в системе ГИС ЭЗ РТ." 
-                + Char(13) + "Однако отправка через систему MAX в Госключ была завершена с ошибкой:"
-                + Char(13) + @patAgree ->{Name}
-                + Char(13) + "(Дата: " + Str(@patAgreeDate) +")";
-                //+ Char(13) + "(" + Str(@patAgreeID) +")";
-                $throw new ClientException(@str,"Согласие на обработку ПД существует");
-                return();
-        end
+
     end;
     // 381485
 
+        // ------------------- Сохранение текста сообщения -------------------
+        @rso:=new AKUZ.RABBIT_SEND_OBJECT();
+        @rso -> {QueueName}:=@patAgreeID;
+        @rso -> {Content}:=@str;
+        @rso -> {RoutingKey}:="";
+        @rso -> {Type}:= "MAX_SEND_DOC_MESSAGE";
+        @rso -> {State}:=1;
+        @rso -> {ContentEncoding}:="utf-8";
+        @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
+        @rso -> Save();
 
 
 
     
-    ///---------------------------- ОТПРАВКА ЗАПРОСА с СЕРВЕРА ----------------------------
+    
     @p := new Process("send_doc_soglasie_PD_Proccess",@obj);
     @p->{Parameters}["patAgreeID"] := @patAgreeID;
     @p->{Parameters}["phone"] := @phone;
     @po := @p -> Run();
 
+    ///---------------------------- ОТПРАВКА ЗАПРОСА с СЕРВЕРА ----------------------------
     ////////////   СЕРВЕРНАЯ ЧАСТЬ   ////////////
+
+    ///---------------------------- Результат выполнения процесса ----------------------------
+
+    @status := @po["status"];
+    @error_text := @po["error_text"];
+
+    @qrPatAgree := query top 1 {FileID},{Status},{CreationDate} from "AKUZ.PATIENT_AGREE"
+                where {FileID} = @patAgreeID;
+    //$throw(Str @qrPatAgree -> Count()));
+    foreach (patAgree in @qrPatAgree)
+    begin()
+
+        if (@error_text <> Null() )
+        begin()
+            @patAgree ->{Name} := @error_text;
+            @patAgree -> {Status} :=1; // 1 - Отозвано
+
+            //--------- ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ SendMessageClient
+            begin(mbb,mbi,str, mb, p)
+                @str := "При попытке отправки документа произошла ошибка:"
+                + Char(13) + @error_text;
+                @mbb := 0; // MessageBoxButtons - 0-Ok
+                @mbi := 8; // MessageBoxIcon
+                @mb := new MessageBoxInfo(@str, "Уведомление об ошибке!", @mbb, @mbi); // 8 - Warning
+                @p := new Process("GenerateMessageBoxOnClient", @mb);
+                @p->Run()[@p];
+            end;
+            @patAgree -> Save();
+        end;
+
+        if(@status = True )
+        begin()
+            @patAgree ->{Name} := "ОТПРАВЛЕНО";
+            @patAgree -> {Status} :=0; // 0 - Активно
+            //$throw(Str(@patAgree ->{CreationDate},"dd.MM.yyyy HH:mm"));
+            //--------- ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ SendMessageClient
+            begin(mbb,mbi,str, mb, p)
+                @str := "Отправка документа произведена УСПЕШНО. ";
+                @mbb := 0; // MessageBoxButtons - 0-Ok
+                @mbi := 1; // MessageBoxIcon
+                @mb := new MessageBoxInfo(@str, Str(@patAgreeID), @mbb, @mbi); // 8 - Warning
+                @p := new Process("GenerateMessageBoxOnClient", @mb);
+                @p->Run()[@p];
+            end;
+            @patAgree -> Save();
+        end;
+
+
+    end;
+
+
 
 end;
