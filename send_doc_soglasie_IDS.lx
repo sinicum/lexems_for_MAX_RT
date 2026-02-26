@@ -1,5 +1,5 @@
 // отправка документа через робот в МАХ. РТ (Татарстан)
-// кнопка отправки. Действие на клиенте. лексема send_doc_soglasie_PD
+// кнопка отправки. Действие на клиенте. лексема send_doc_soglasie_IDS
 begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, patAgreeID, patAgree,patAgreeDate,
  p, po, status, error_text, str, rso)
 {
@@ -79,7 +79,7 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
 
     @qrPatAgree := query top 1 {FileID},{Status},{CreationDate} from "AKUZ.PATIENT_AGREE"
                     where {AmbulanceCard / AmbulanceCardID} = @acID
-                       and {ObjectId} = "95966dd5-6ae1-4606-8d17-905b35a4f3a4"  // "Согласие на обработку ПДн"
+                       and {ObjectId} = "4f91b637-37bb-4692-8745-0f8a457c33a2"//"95966dd5-6ae1-4606-8d17-905b35a4f3a4"  // "ИДС на мед.вмешательство"
                        and {Status} <> 1;
                        
     //$throw(Str(@acID));
@@ -95,7 +95,7 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
         @patAgree := new AKUZ.PATIENT_AGREE (new Apartment());
         @patAgree ->{AmbulanceCard} := @obj ;// *Object // AMB_CARD 
         @patAgree ->{CreationDate} := param(CURRENT_DATE_TIME); // Дата выдачи согласия
-        @patAgree ->{ObjectId} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4";  // Идентификатор документа, на которое выдано согласие 
+        @patAgree ->{ObjectId} := "4f91b637-37bb-4692-8745-0f8a457c33a2";  // Идентификатор документа, на которое выдано согласие 
         @patAgree ->{Name} := ""; // сперва пусто, потом название от бота ".zip"
         @patAgree ->{SaveFileLocation} = 1; // 1 - В базе данных
         @patAgree ->{BaseUsers} := @userQr[0]; //*Object // Пользователь, взявший согласие
@@ -103,13 +103,13 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
         @patAgree ->{ObjectEntityId} := 1 ; // Сущность документа, на которое выдано согласие
         @patAgree ->{AgreeType} := 0; // Тип согласия, 0 - "Согласие"
         @patAgree ->{FileNameForm} := 1;
-        //@patAgree ->{Status} := 0; // 0 - Активно , 1 - Отозвано
+        @patAgree ->{Status} := 0; // 0 - Активно , 1 - Отозвано
         @patAgree-> Save();
 
         @patAgreeID :=@patAgree ->{FileID};
         //--------- ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ SendMessageClient 9b0f396d-9bf3-4116-9a03-7b612d9fd245
         begin(p, sessionID)
-            @str :=  "Будет произведена отправка документа «Согласие на обработку персональных данных» с использованием системы «Госключ»"
+            @str :=  "Будет произведена отправка документа «ИДС на мед.вмешательство» с использованием системы «Госключ»"
             + Char(13) + "Убедитесь, что пациент зарегистрирован в системах MAX и Госключ."
             + Char(13) + "(" + Str(@patAgreeID) +")";
             @sessionID := param(USER_SESSION_ID);
@@ -133,7 +133,7 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
             if (@patAgree ->{Content} <> Null())
             //------------------- то согласие что В БАЗЕ уже С ФАЙЛОМ ?
             begin(p, sessionID)
-                @str :=  "Документ «Согласие на обработку ПД» уже было создано в системе ГИС ЭЗ РТ." 
+                @str :=  "Документ «ИДС на мед.вмешательство» уже было создано в системе ГИС ЭЗ РТ." 
                 + Char(13) + "Файл подписи был получен и успешно сохранён в системе."
                 + Char(13) + "(Дата: " + Str(@patAgreeDate) +")";
                 @sessionID := param(USER_SESSION_ID);
@@ -146,7 +146,7 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
             end
             else
             begin(p, sessionID)
-                @str :=  "Документ «Согласие на обработку ПД» уже было создано в системе ГИС ЭЗ РТ." 
+                @str :=  "Документ «ИДС на мед.вмешательство» уже было создано в системе ГИС ЭЗ РТ." 
                 + Char(13) + "Файл подписи ещё на получен. Следует дождаться получения файла подписи"
                 + Char(13) + "(Дата: " + Str(@patAgreeDate) +")";
                 @sessionID := param(USER_SESSION_ID);
@@ -176,10 +176,9 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
 
     
     
-    @p := new Process("send_doc_soglasie_PD_Proccess",@obj);
+    @p := new Process("send_doc_soglasie_IDS_Proccess",@obj);
     @p->{Parameters}["patAgreeID"] := @patAgreeID;
     @p->{Parameters}["phone"] := @phone;
-    
     @po := @p -> Run();
 
     ///---------------------------- ОТПРАВКА ЗАПРОСА с СЕРВЕРА ----------------------------
