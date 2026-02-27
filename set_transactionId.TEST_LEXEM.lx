@@ -1,0 +1,33 @@
+// Скрипт проставляющий в Описание transactionId
+begin(qrPatAgree,name,agree)
+
+    @qrPatAgree := query  {FileID},{Name},{FileDescription}
+                    from "AKUZ.PATIENT_AGREE"
+                    where {FileHash} <> Null()
+                    and exists("AKUZ.RABBIT_SEND_OBJECT", {CreateDateTime} >= new DateTime("25.02.2026 00:00:00") 
+                    And {QueueName} = Str({1:FileID}) 
+                    And {Type} = "MAX_SEND_DOC_RESPONSE" 
+                    And {RoutingKey} = "200");
+
+    print(@qrPatAgree-> Count());
+    
+    foreach(agree in @qrPatAgree)
+    begin(FileID,qr)
+
+        @FileID := @agree -> {FileID};
+        @qr := query top 1 {Content} from "AKUZ.RABBIT_SEND_OBJECT"
+            where  {CreateDateTime} >= new DateTime("25.02.2026 00:00:00") 
+                And {QueueName} = @FileID
+                And {Type} = "MAX_SEND_DOC_RESPONSE"
+                And {RoutingKey} = "200"
+                and {State} = 10;
+        
+        @agree -> {FileDescription} := @qr[0]->{Content};
+
+        print(@qr[0]);
+
+        @agree -> Save();
+
+    end;
+
+end
