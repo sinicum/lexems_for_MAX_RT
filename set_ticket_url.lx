@@ -24,7 +24,6 @@ begin(ticketID, url, qrTicket, resp ,status, err)
                 @thisTicket -> Save();
                 // заполняю поля на отдачу
                 @resp -> {status} := "success";
-                
 
             end
             else

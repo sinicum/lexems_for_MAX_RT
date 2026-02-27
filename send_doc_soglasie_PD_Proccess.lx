@@ -1,6 +1,6 @@
 // send_doc_soglasie_PD_Proccess
 begin(obj, patAgreeID, phone, REQ, sectBD, sectMD, 
-    rso, headers, address, response, result, statusCode, json ,json2
+    rso, headers, address, response, result, statusCode, json ,json2,
     status,error_text, transactionId)
     ////////////   СЕРВЕРНАЯ ЧАСТЬ   ////////////
    

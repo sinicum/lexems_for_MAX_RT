@@ -1,6 +1,6 @@
 // send_doc_soglasie_IDS_Proccess
 begin(obj, patAgreeID, phone, REQ, sectBD, sectMD, 
-    rso, headers, address, response, result, statusCode, json ,json2
+    rso, headers, address, response, result, statusCode, json ,json2,
     status,error_text, transactionId)
     ////////////   СЕРВЕРНАЯ ЧАСТЬ   ////////////
 
@@ -139,7 +139,7 @@ begin(obj, patAgreeID, phone, REQ, sectBD, sectMD,
             @transactionId := @json2;
             //@transactionId:= @result["Body"]->{transactionId};
         end;
-        
+
         if(@json2 Like "%ErrorDescription%")
             @error_text:= @json2;
             //@error_text:= @result["Body"]->{ErrorDescription};

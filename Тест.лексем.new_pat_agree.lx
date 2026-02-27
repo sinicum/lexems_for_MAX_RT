@@ -8,9 +8,9 @@ begin(Body, file, patAgree, userQr, acQr)
     @patAgree := new AKUZ.PATIENT_AGREE (new Apartment());
     @patAgree ->{AmbulanceCard} := @acQr[0] ;// *Object // AMB_CARD 
     @patAgree ->{CreationDate} := param(CURRENT_DATE_TIME); // Дата выдачи согласия
-    @patAgree ->{ObjectId} := "00000000-0000-0000-0000-000000000000";  // Идентификатор документа, на которое выдано согласие
-    @patAgree ->{Name} := "11111.zip";
-    @patAgree ->{SaveFileLocation} = 1;
+    @patAgree ->{ObjectId} := "95966dd5-6ae1-4606-8d17-905b35a4f3a4";  // Идентификатор документа, на которое выдано согласие 
+    @patAgree ->{Name} := ""; // сперва пусто, потом название от бота ".zip"
+    @patAgree ->{SaveFileLocation} = 1; // 1 - В базе данных
     @patAgree ->{BaseUsers} := @userQr[0]; //*Object // Пользователь, взявший согласие
     @patAgree ->{UseOle} := True;
     @patAgree ->{ObjectEntityId} := 1 ; // Сущность документа, на которое выдано согласие
