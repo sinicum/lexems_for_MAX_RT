@@ -29,7 +29,7 @@ begin(patAgreeID, transactionID, title, fileB64, qrPatAgree, resp ,status, err)
             if (@qrPatAgree->Count()>0 )  //----- НАЙДЕНЫ ЛИ ЗАПИСИ ------//
             foreach(thisPatAgree in @qrPatAgree)
             begin()
-                @thisPatAgree ->{Name} := IsNull(@title,"title");
+                @thisPatAgree ->{Name} := IsNull(@title,"title")+".zip";
                 @thisPatAgree ->{Content} := FromBase64String(@fileB64);
                 @thisPatAgree -> Save();
                 // заполняю поля на отдачу
