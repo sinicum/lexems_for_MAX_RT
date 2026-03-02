@@ -216,7 +216,7 @@ begin(objQr, obj, REQ, patID, phone, acID, qrPatAgree, patAgreeID, patAgree,patA
     @rso -> {Content}:=@json2;
     @rso -> {RoutingKey}:=@statusCode;
     @rso -> {Type}:="MAX_SEND_DOC_RESPONSE";
-    @rso -> {State}:=1;
+    @rso -> {State}:=10;
     @rso -> {ContentEncoding}:="utf-8";
     @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
     @rso -> Save();

@@ -167,7 +167,7 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
         @rso -> {Content}:=@str;
         @rso -> {RoutingKey}:="";
         @rso -> {Type}:= "MAX_SEND_DOC_MESSAGE";
-        @rso -> {State}:=1;
+        @rso -> {State}:=10;
         @rso -> {ContentEncoding}:="utf-8";
         @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
         @rso -> Save();
