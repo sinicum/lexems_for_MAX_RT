@@ -172,9 +172,6 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
         @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
         @rso -> Save();
 
-
-
-    
     
     @p := new Process("send_doc_soglasie_IDS_Proccess",@obj);
     @p->{Parameters}["patAgreeID"] := @patAgreeID;
@@ -217,6 +214,7 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
         if(@status = True )
         begin()
             @patAgree ->{Name} := @transactionId;
+            @patAgree ->{FileDescription} := @transactionId;
             @patAgree -> {Status} :=0; // 0 - Активно
             //$throw(Str(@patAgree ->{CreationDate},"dd.MM.yyyy HH:mm"));
             //--------- ОТПРАВКА СООБЩЕНИЯ КЛИЕНТУ SendMessageClient
@@ -231,9 +229,6 @@ begin(objQr, obj, REQ, sectBD, sectMD, patID, phone, json, acID, qrPatAgree, pat
             @patAgree -> Save();
         end;
 
-
     end;
-
-
 
 end;
