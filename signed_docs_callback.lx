@@ -48,16 +48,17 @@ begin(patAgreeID, transactionID, title, fileB64, qrPatAgree, resp ,status, err)
             @resp->{error} := "Параметр patAgreeID имеет неверный формат. Идентификатор GUID должен содержать 32 цифры и 4 дефиса (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).";
         end;
 
-
+        //------------- СОХРАНЕНИЕ ЗАПРОСА В ТАБЛИЦУ RABBIT_SEND_OBJECT
+        if(@status = 200)
         begin(rso)
             @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
             @rso -> {QueueName}:=@patAgreeID;  
-            @rso -> {Content} := Replace(Str(@Body,"Json"),"\"flags_\":\"1\",","");
+            @rso -> {Content} := Substring(Replace(Str(@Body,"Json"),"\"flags_\":\"1\",",""),0,64)+"... ";
             @rso -> {Content} := str(@rso -> {Content} + char(13)+char(10)+char(13)+char(10));
             @rso -> {Content} := str(@rso -> {Content} + Replace(Str(@resp,"Json"),"\"flags_\":\"1\",",""));
             @rso -> {RoutingKey}:=@status;
             @rso -> {Type}:="MAX_PAT_AGREE_FILE_IN";
-            @rso -> {State}:=1;
+            @rso -> {State}:=10;
             @rso -> {ContentEncoding}:="utf-8";
             @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
             @rso -> Save();
@@ -84,8 +85,22 @@ begin(patAgreeID, transactionID, title, fileB64, qrPatAgree, resp ,status, err)
  
         @resp := new MAX.SIGNED_DOCS_RESP_OUT();
         @resp -> {error} := @err;
+        @status := 500;
+
+        //------------- СОХРАНЕНИЕ ЗАПРОСА В ТАБЛИЦУ RABBIT_SEND_OBJECT
+        begin(rso)
+            @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
+            @rso -> {QueueName}:="ошибка";
+            @rso -> {Content} := @err;
+            @rso -> {RoutingKey}:=@status;
+            @rso -> {Type}:="MAX_PAT_AGREE_FILE_IN";
+            @rso -> {State}:=10;
+            @rso -> {ContentEncoding}:="utf-8";
+            @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
+            @rso -> Save();
+        end;
         
-        @response.StatusCode := 500;
+        @response.StatusCode := @status;
         return(@resp);
         
     end;    
