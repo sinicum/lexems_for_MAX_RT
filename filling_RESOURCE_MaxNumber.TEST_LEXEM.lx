@@ -1,0 +1,13 @@
+//---------- скрипт для заполнения нового атрибута для Номера тлф. врача - MaxNumber
+begin(qrRes,res,n)
+    @qrRes := query top 1000 {MaxNumber},{xMAXPhoneMunber} from "AKUZ.RESOURCE"
+                where {xMAXPhoneMunber} <> Null()  And {MaxNumber} = Null();
+    print(@qrRes->count());
+    foreach(res in @qrRes)
+    begin()
+        print("!");
+        @n := "+" + @res -> {xMAXPhoneMunber};
+        @res -> {MaxNumber} := @n;
+        @res -> Save();
+    end;
+end
