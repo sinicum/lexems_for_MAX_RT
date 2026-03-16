@@ -1,5 +1,5 @@
 // Ресурс /tmk_entries -- Список предстоящих Записей на приём на сегодня/завтра
-begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patPhone, phones ,status)
+begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patPhone, ar, newNumQR, phones ,status)
 
     // declare MAX.ENTRY(
     //     main: MAX.ENTRIES_LIST,
@@ -59,12 +59,15 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                                         //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Comment}
                                         ,{Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl}
                                         ,{Resource / xMAXPhoneMunber} 
+                                        ,{Resource / MaxNumber} 
+                                        ,{AmbulanceRecord / MedicalRecordID}
                             from "AKUZ.ENTRY_AMBULANCE" 
-                            where {Ticket / TicketTime}>=  param(CURRENT_DATE)
+                            where {Ticket / TicketTime} >=  new DateTime("14.03.2026 00:00:00") // param(CURRENT_DATE)
                                 AND DateAdd("Day", -2, {Ticket / TicketTime}) <= param(CURRENT_DATE)
                                 and {Resource / Division / Branch / LpuMain / LpuID} <> @excludeMO
                                 // and {Resource / Division / Branch / LpuMain / LpuID} = @moID
                                 And {Ticket / TicketType} = 8 
+                                and {Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl} = Null()
                             //order by {Ticket / TicketTime} desc
                             ;
 
@@ -114,9 +117,10 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                         @Entry->{docPhone} := @docPhone[0][0]; //"9225014433";
 
                     // Номер врача/кабинета из доп.атрибута
-                    @Entry->{docPhone} := @thisEntry-> {Resource / xMAXPhoneMunber};
+                    @Entry->{docPhone} := Isnull( Replace(@thisEntry->{Resource / MaxNumber},"+",""), @thisEntry-> {Resource / xMAXPhoneMunber});
 
 
+                    
                     @Entry->{patientFIO} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / cFIO};
                     // @Entry->{phonesString} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString};
                     @Entry->{dateTime} := Str(@thisEntry->{Ticket / TicketTime},"yyyy-MM-dd HH:mm");
@@ -136,6 +140,15 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                                 order by {AddedDate} desc;
                     if (@patPhone -> Count() > 0)
                         @Entry->{patPhone} := @patPhone[0][0]; //"9225014433";
+                    
+                    // номер из НАЗНАЧЕНИЯ НА ПОВТОРКУ
+                    @ar := @thisEntry-> {AmbulanceRecord / MedicalRecordID};
+                    @newNumQR := query top 1 {PhoneNumber} from "AKUZ.REPEATED_PRESCRIPTION_RECORD" 
+                        where {PrescriptionType} = 1 
+                            And {MedicalRecordID} = @ar
+                            and {PhoneNumber}<>Null();
+                    if (@newNumQR -> Count() > 0)
+                        @Entry->{patPhone} := @newNumQR[0] -> {PhoneNumber};
 
                     if(@thisEntry-> {Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl}<>Null() )
                         @Entry->{url} := @thisEntry-> {Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl};
