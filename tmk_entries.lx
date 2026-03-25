@@ -11,7 +11,8 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
     //     speciality: string,
     //     docPhone: string,
     //     patientFIO: string,
-    //     patPhone: string
+    //     patPhone: string,
+    //     createDateTime: string
     // );
 
     // declare MAX.ENTRIES_LIST(
@@ -22,7 +23,7 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
     try 
     begin()
         
-        @moID := "585a2851-e999-40a6-8979-79aecbfc2e89";// @querystring["moID"]; //  1.2.643.5.1.13.13.12.2.16.1163	ГАУЗ "ГКБ №7 им. М.Н.Садыкова"	420137, г.Казань, ул.Маршала Чуйкова, д.54 // ГКБ 7
+        //@moID := "585a2851-e999-40a6-8979-79aecbfc2e89";// @querystring["moID"]; //  1.2.643.5.1.13.13.12.2.16.1163	ГАУЗ "ГКБ №7 им. М.Н.Садыкова"	420137, г.Казань, ул.Маршала Чуйкова, д.54 // ГКБ 7
         @excludeMO := "465ceb83-2722-4404-8261-2012a0b6ec4d";  // ГАУЗ "РКОД МЗ РТ им. проф. М.З. Сигала"
 
         @status := 200;
@@ -62,12 +63,12 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                                         ,{Resource / MaxNumber} 
                                         ,{AmbulanceRecord / MedicalRecordID}
                             from "AKUZ.ENTRY_AMBULANCE" 
-                            where {Ticket / TicketTime} >=  new DateTime("14.03.2026 00:00:00") // param(CURRENT_DATE)
+                            where {Ticket / TicketTime} >= param(CURRENT_DATE) // new DateTime("16.03.2026 00:00:00") // 
                                 AND DateAdd("Day", -2, {Ticket / TicketTime}) <= param(CURRENT_DATE)
                                 and {Resource / Division / Branch / LpuMain / LpuID} <> @excludeMO
                                 // and {Resource / Division / Branch / LpuMain / LpuID} = @moID
                                 And {Ticket / TicketType} = 8 
-                                and {Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl} = Null()
+                                // and {Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl} = Null()
                             //order by {Ticket / TicketTime} desc
                             ;
 
@@ -173,7 +174,7 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
                 end
                 else
                 begin()
-                    @status:=206;
+                    @status:=404;
                     @EntrsList->{error} := "Не найдены записи ";
                 end;
 
