@@ -1,5 +1,5 @@
 // Ресурс /tmk_entries -- Список предстоящих Записей на приём на сегодня/завтра
-begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patPhone, ar, newNumQR, phones ,status)
+begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patPhone, ar, newNumQR, phones ,status, rso)
 
     // declare MAX.ENTRY(
     //     main: MAX.ENTRIES_LIST,
@@ -30,166 +30,158 @@ begin(moID, excludeMO, patID, EntrsList, Entry, qrEntries, resID, docPhone, patP
 
         @EntrsList := new MAX.ENTRIES_LIST();
 
-        // if (RegularExpression("^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$", @moID) > 0) 
+
+        // if(@moID<>Null() and @moID<>"")
         // begin()
 
-        //     if(@moID<>Null() and @moID<>"")
-        //     begin()
-
-                //------- ENTRY_AMBULANCE -------//
-                @qrEntries := query {Ticket / TicketID},{Ticket / TicketTime},{CreationDateTime}
-                                        //,{Ticket / TicketType}
-                                        //,{EntryPlace} 
-                                        //,{ObjectProperties / ObjectType / EntDesc}
-                                        //,{Place}
-                                        ,{Resource / ResourceID}
-                                        //,{Resource / As AKUZ.POST / Worker / FIO}
-                                        ,{Resource / As AKUZ.POST / Worker / FirstName}
-                                        ,{Resource / As AKUZ.POST / Worker / LastName}
-                                        ,{Resource / As AKUZ.POST / Worker / FatherName}
-                                        ,{Resource / As AKUZ.ROOM / Name}
-                                        ,{Resource / Speciality / Name}
-                                        ,{Resource / Division / Branch / Name}
-                                        ,{Resource / Division / Branch / LpuMain / Name}
-                                        ,{AmbulanceEvent / AmbulanceCard / Patient / PatientID}
-                                        ,{AmbulanceEvent / AmbulanceCard / Patient / cFIO}
-                                        //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString}
-                                        //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Number}
-                                        //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / PhoneType}
-                                        //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / xCleanNumber}
-                                        //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Comment}
-                                        ,{Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl}
-                                        ,{Resource / xMAXPhoneMunber} 
-                                        ,{Resource / MaxNumber} 
-                                        ,{AmbulanceRecord / MedicalRecordID}
-                            from "AKUZ.ENTRY_AMBULANCE" 
-                            where {Ticket / TicketTime} >= param(CURRENT_DATE) // new DateTime("16.03.2026 00:00:00") // 
-                                AND DateAdd("Day", -2, {Ticket / TicketTime}) <= param(CURRENT_DATE)
-                                and {Resource / Division / Branch / LpuMain / LpuID} <> @excludeMO
-                                // and {Resource / Division / Branch / LpuMain / LpuID} = @moID
-                                And {Ticket / TicketType} = 8 
-                                // and {Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl} = Null()
-                            //order by {Ticket / TicketTime} desc
-                            ;
+            //------- ENTRY_AMBULANCE -------//
+            @qrEntries := query {Ticket / TicketID},{Ticket / TicketTime},{CreationDateTime}
+                                    //,{Ticket / TicketType}
+                                    //,{EntryPlace} 
+                                    //,{ObjectProperties / ObjectType / EntDesc}
+                                    //,{Place}
+                                    ,{Resource / ResourceID}
+                                    //,{Resource / As AKUZ.POST / Worker / FIO}
+                                    ,{Resource / As AKUZ.POST / Worker / FirstName}
+                                    ,{Resource / As AKUZ.POST / Worker / LastName}
+                                    ,{Resource / As AKUZ.POST / Worker / FatherName}
+                                    ,{Resource / As AKUZ.ROOM / Name}
+                                    ,{Resource / Speciality / Name}
+                                    ,{Resource / Division / Branch / Name}
+                                    ,{Resource / Division / Branch / LpuMain / Name}
+                                    ,{AmbulanceEvent / AmbulanceCard / Patient / PatientID}
+                                    ,{AmbulanceEvent / AmbulanceCard / Patient / cFIO}
+                                    //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString}
+                                    //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Number}
+                                    //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / PhoneType}
+                                    //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / xCleanNumber}
+                                    //,{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers / Comment}
+                                    ,{Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl}
+                                    ,{Resource / xMAXPhoneMunber} 
+                                    ,{Resource / MaxNumber} 
+                                    ,{AmbulanceRecord / MedicalRecordID}
+                        from "AKUZ.ENTRY_AMBULANCE" 
+                        where {Ticket / TicketTime} >= param(CURRENT_DATE) // new DateTime("16.03.2026 00:00:00") // 
+                            AND DateAdd("Day", -2, {Ticket / TicketTime}) <= param(CURRENT_DATE)
+                            and {Resource / Division / Branch / LpuMain / LpuID} <> @excludeMO
+                            // and {Resource / Division / Branch / LpuMain / LpuID} = @moID
+                            And {Ticket / TicketType} = 8 
+                            and {Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl} = Null()
+                        //order by {Ticket / TicketTime} desc
+                        ;
 
 
-                // ============== JSON структура  ==============
-                // {
-                //     "entries": [
-                //         {
-                //             "ticketID": "uuid",
-                //             "dateTime": "dd-MM-yyyy HH:mm",
-                //             "branchName": "string",
-                //             "moName": "string",
-                //             "resourceName": "Фамилия Имя Отчество",
-                //             "speciality": "Специальность",
-                //             "docPhone" : "7ХХХХХХХХХ",   // 11 цифр, начиная с «7»
-                //             "patientFIO": "Фамилия Имя Отчество",
-                //             "patPhone": "+7(999)888-88-77",
-                //             "url":"https://max.ru/joincall/...",
-                //             "createDateTime": "dd-MM-yyyy HH:mm"
-                //         }
-                //     ]
-                // }
+            // ============== JSON структура  ==============
+            // {
+            //     "entries": [
+            //         {
+            //             "ticketID": "uuid",
+            //             "dateTime": "dd-MM-yyyy HH:mm",
+            //             "branchName": "string",
+            //             "moName": "string",
+            //             "resourceName": "Фамилия Имя Отчество",
+            //             "speciality": "Специальность",
+            //             "docPhone" : "7ХХХХХХХХХ",   // 11 цифр, начиная с «7»
+            //             "patientFIO": "Фамилия Имя Отчество",
+            //             "patPhone": "+7(999)888-88-77",
+            //             "url":"https://max.ru/joincall/...",
+            //             "createDateTime": "dd-MM-yyyy HH:mm"
+            //         }
+            //     ]
+            // }
 
-                if (@qrEntries->Count()>0 )  //----- НАЙДЕНЫ ЛИ ЗАПИСИ ------//
-                foreach(thisEntry in @qrEntries)
-                begin()
+            if (@qrEntries->Count()>0 )  //----- НАЙДЕНЫ ЛИ ЗАПИСИ ------//
+            foreach(thisEntry in @qrEntries)
+            begin()
 
-                    @Entry := new MAX.ENTRY();
+                @Entry := new MAX.ENTRY();
 
-                    @Entry->{ticketID} := @thisEntry -> {Ticket / TicketID};
-                    @Entry->{branchName} := @thisEntry ->{Resource / Division / Branch / Name};
-                    @Entry->{moName} := @thisEntry ->{Resource / Division / Branch / LpuMain / Name};
-                    @Entry->{resourceName} := IsNull(@thisEntry->{Resource / As AKUZ.ROOM / Name},
-                                            @thisEntry->{Resource / As AKUZ.POST / Worker / LastName} +" "+ 
-                                            @thisEntry->{Resource / As AKUZ.POST / Worker / FirstName}+" "+ 
-                                            IsNull(@thisEntry->{Resource / As AKUZ.POST / Worker / FatherName},"")
-                                        );
-                    @Entry->{speciality} := @thisEntry->{Resource / Speciality / Name};
-
-
-                    // подзапрос Номера телефона врача. поле Id2FA из LOGIN
-                    @resID := @thisEntry-> {Resource / ResourceID};
-                    @docPhone := select top 1 {Id2FA} from "VCLib.LOGIN" 
-                                 where {Id2FA} <> Null() 
-                                    And ChildExists({Identity / BaseUserss}, {As AKUZ.USERS / Post / ResourceID} = @resID);
-                    if (@docPhone -> Count() > 0)
-                        @Entry->{docPhone} := @docPhone[0][0]; //"9225014433";
-
-                    // Номер врача/кабинета из доп.атрибута
-                    @Entry->{docPhone} := Isnull( Replace(@thisEntry->{Resource / MaxNumber},"+",""), @thisEntry-> {Resource / xMAXPhoneMunber});
+                @Entry->{ticketID} := @thisEntry -> {Ticket / TicketID};
+                @Entry->{branchName} := @thisEntry ->{Resource / Division / Branch / Name};
+                @Entry->{moName} := @thisEntry ->{Resource / Division / Branch / LpuMain / Name};
+                @Entry->{resourceName} := IsNull(@thisEntry->{Resource / As AKUZ.ROOM / Name},
+                                        @thisEntry->{Resource / As AKUZ.POST / Worker / LastName} +" "+ 
+                                        @thisEntry->{Resource / As AKUZ.POST / Worker / FirstName}+" "+ 
+                                        IsNull(@thisEntry->{Resource / As AKUZ.POST / Worker / FatherName},"")
+                                    );
+                @Entry->{speciality} := @thisEntry->{Resource / Speciality / Name};
 
 
-                    
-                    @Entry->{patientFIO} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / cFIO};
-                    // @Entry->{phonesString} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString};
-                    @Entry->{dateTime} := Str(@thisEntry->{Ticket / TicketTime},"yyyy-MM-dd HH:mm");
-                    @Entry->{createDateTime} := Str(@thisEntry->{CreationDateTime},"yyyy-MM-dd HH:mm"); // Дата создания
-                    //@Entry->{ticketType} := Str(@thisEntry -> {Ticket / TicketType});
-                    //@Entry->{entryPlace} := Str(@thisEntry->{EntryPlace});
-                    //@Entry->{entryType} := @thisEntry->{ObjectProperties / ObjectType / EntDesc};
-                    //@Entry->{Resource} := @thisEntry->{Resource / As AKUZ.POST / DisplayName};
-                    // @Entry->{place} := @thisEntry->{Place};
-                                       
-                    // подзапрос Номера телефона пациента. последний изменённый с типом "мобильный"
-                    @patID := @thisEntry ->{AmbulanceEvent / AmbulanceCard / Patient / PatientID};
-                    @patPhone := select top 1 {Number} from "AKUZ.PHONE_NUMBER"
-                                where {Patient / PatientID} = @patID
-                                    And {Number} <> Null()
-                                    And {PhoneType} = 3
-                                order by {AddedDate} desc;
-                    if (@patPhone -> Count() > 0)
-                        @Entry->{patPhone} := @patPhone[0][0]; //"9225014433";
-                    
-                    // номер из НАЗНАЧЕНИЯ НА ПОВТОРКУ
-                    @ar := @thisEntry-> {AmbulanceRecord / MedicalRecordID};
-                    @newNumQR := query top 1 {PhoneNumber} from "AKUZ.REPEATED_PRESCRIPTION_RECORD" 
-                        where {PrescriptionType} = 1 
-                            And {MedicalRecordID} = @ar
-                            and {PhoneNumber}<>Null();
-                    if (@newNumQR -> Count() > 0)
-                        @Entry->{patPhone} := @newNumQR[0] -> {PhoneNumber};
+                // подзапрос Номера телефона врача. поле Id2FA из LOGIN
+                @resID := @thisEntry-> {Resource / ResourceID};
+                @docPhone := select top 1 {Id2FA} from "VCLib.LOGIN" 
+                                where {Id2FA} <> Null() 
+                                And ChildExists({Identity / BaseUserss}, {As AKUZ.USERS / Post / ResourceID} = @resID);
+                if (@docPhone -> Count() > 0)
+                    @Entry->{docPhone} := @docPhone[0][0]; //"9225014433";
 
-                    if(@thisEntry-> {Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl}<>Null() )
-                        @Entry->{url} := @thisEntry-> {Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl};
-                    
+                // Номер врача/кабинета из доп.атрибута
+                @Entry->{docPhone} := Isnull( Replace(@thisEntry->{Resource / MaxNumber},"+",""), @thisEntry-> {Resource / xMAXPhoneMunber});
 
-                    // @phones:= @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbers};
-                    // foreach(phone in @phones)
-                    // begin(jPhone)
 
-                    //     @jPhone := new MAX.PHONE(); 
-                    //     @jPhone -> {number} := @phone ->{Number};
-                    //     //@jPhone -> {cleanNumber} := @phone ->{xCleanNumber};
-                    //     @jPhone -> {phoneType} := @phone -> Str({PhoneType});
-                    //     if(@phone ->{Comment}<>Null()) @jPhone -> {comment} := @phone ->{Comment};
+                
+                @Entry->{patientFIO} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / cFIO};
+                // @Entry->{phonesString} := @thisEntry->{AmbulanceEvent / AmbulanceCard / Patient / PhoneNumbersString};
+                @Entry->{dateTime} := Str(@thisEntry->{Ticket / TicketTime},"yyyy-MM-dd HH:mm");
+                @Entry->{createDateTime} := Str(@thisEntry->{CreationDateTime},"yyyy-MM-dd HH:mm"); // Дата создания
+                //@Entry->{ticketType} := Str(@thisEntry -> {Ticket / TicketType});
+                //@Entry->{entryPlace} := Str(@thisEntry->{EntryPlace});
+                //@Entry->{entryType} := @thisEntry->{ObjectProperties / ObjectType / EntDesc};
+                //@Entry->{Resource} := @thisEntry->{Resource / As AKUZ.POST / DisplayName};
+                // @Entry->{place} := @thisEntry->{Place};
+                                    
+                // подзапрос Номера телефона пациента. последний изменённый с типом "мобильный"
+                @patID := @thisEntry ->{AmbulanceEvent / AmbulanceCard / Patient / PatientID};
+                @patPhone := select top 1 {Number} from "AKUZ.PHONE_NUMBER"
+                            where {Patient / PatientID} = @patID
+                                And {Number} <> Null()
+                                And {PhoneType} = 3
+                            order by {AddedDate} desc;
+                if (@patPhone -> Count() > 0)
+                    @Entry->{patPhone} := @patPhone[0][0]; //"9225014433";
+                
+                // номер из НАЗНАЧЕНИЯ НА ПОВТОРКУ
+                @ar := @thisEntry-> {AmbulanceRecord / MedicalRecordID};
+                @newNumQR := query top 1 {PhoneNumber} from "AKUZ.REPEATED_PRESCRIPTION_RECORD" 
+                    where {PrescriptionType} = 1 
+                        And {MedicalRecordID} = @ar
+                        and {PhoneNumber}<>Null();
+                if (@newNumQR -> Count() > 0)
+                    @Entry->{patPhone} := @newNumQR[0] -> {PhoneNumber};
 
-                    //     @Entry->{phones} -> Add(@jPhone);
-                    // end;
+                if(@thisEntry-> {Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl}<>Null() )
+                    @Entry->{url} := @thisEntry-> {Ticket / As AKUZ.TELECONSULTATION_TICKET / TeleconsultationUrl};
+                
 
-                    @EntrsList->{entries} -> Add(@Entry);
-                    //@EntrsList->{error} := Str(@Entry,"Json");
 
-                end
-                else
-                begin()
-                    @status:=404;
-                    @EntrsList->{error} := "Не найдены записи ";
-                end;
+                @EntrsList->{entries} -> Add(@Entry);
+                //@EntrsList->{error} := Str(@Entry,"Json");
 
-        //     end else 
-        //     begin()
-        //         @status:=206;
-        //         @EntrsList->{error} := "Не указан параметр patId";
-        //     end;
-        // end else
+            end
+            else
+            begin()
+                @status:=404;
+                @EntrsList->{error} := "Не найдены записи ";
+            end;
+
+        // end else 
         // begin()
         //     @status:=206;
-        //     @EntrsList->{error} := "Параметр patId имеет неверный формат";
+        //     @EntrsList->{error} := "Не указан параметр moID";
         // end;
 
         // @EntrsList->{error} := @qrEntries->Count();
+
+        //------------- СОХРАНЕНИЕ информации о запросе В ТАБЛИЦУ RABBIT_SEND_OBJECT
+        @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
+        @rso -> {QueueName}:=@request->{Address};
+        @rso -> {Content}:="Количетво записей по запросу к сервису /tmk_entries: " + IsNull(Str(@qrEntries->Count()),"Не найдены записи");
+        @rso -> {RoutingKey}:=@status;
+        @rso -> {Type}:="MAX_TMK_ENTRIES_COUNT";
+        @rso -> {State}:=10;
+        @rso -> {ContentEncoding}:="utf-8";
+        @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
+        @rso -> Save();
         
         @response.StatusCode:=@status;
         return(@EntrsList);
