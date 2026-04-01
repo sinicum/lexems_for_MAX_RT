@@ -41,7 +41,8 @@ begin(ticketID, url, qrTicket, resp ,status, err)
         //------------- СОХРАНЕНИЕ ЗАПРОСА В ТАБЛИЦУ RABBIT_SEND_OBJECT
         begin(rso)
             @rso:=new AKUZ.RABBIT_SEND_OBJECT(new Apartment());
-            @rso -> {QueueName}:=@ticketID;  
+            @rso -> {QueueName}:=@ticketID;
+            @rso -> {Headers} := @request->{Address};
             @rso -> {Content} := Replace(Str(@Body,"Json"),"\"flags_\":\"1\",","");
             @rso -> {Content} := str(@rso -> {Content} + char(13)+char(10)+char(13)+char(10));
             @rso -> {Content} := str(@rso -> {Content} + Replace(Str(@resp,"Json"),"\"flags_\":\"1\",",""));
