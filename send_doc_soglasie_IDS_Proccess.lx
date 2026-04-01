@@ -101,7 +101,7 @@ begin(obj, patAgreeID, phone, REQ, sectBD, sectMD,
         @rso -> {Content}:=Str(@json);
         @rso -> {RoutingKey}:="";
         @rso -> {Type}:= "MAX_SEND_DOC_REQUEST";
-        @rso -> {State}:=1;
+        @rso -> {State}:=10;
         @rso -> {ContentEncoding}:="utf-8";
         @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
         @rso -> Save();
@@ -136,7 +136,7 @@ begin(obj, patAgreeID, phone, REQ, sectBD, sectMD,
         @rso -> {Content}:=@json2;
         @rso -> {RoutingKey}:=@statusCode;
         @rso -> {Type}:="MAX_SEND_DOC_RESPONSE";
-        @rso -> {State}:=1;
+        @rso -> {State}:=10;
         @rso -> {ContentEncoding}:="utf-8";
         @rso -> {CreateDateTime}:= param(CURRENT_DATE_TIME);
         @rso -> Save();
